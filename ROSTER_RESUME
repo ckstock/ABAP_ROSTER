@@ -1,0 +1,830 @@
+ *&---------------------------------------------------------------------*
+*&  包含                ZR_HR_PA002_1_RESUME
+*&---------------------------------------------------------------------*DATA: g_excel        TYPE ole2_object,
+DATA: G_EXCEL        TYPE OLE2_OBJECT,
+      G_SHEET        TYPE OLE2_OBJECT,
+      G_SHEET1       TYPE OLE2_OBJECT,
+      G_WORKBOOK     TYPE OLE2_OBJECT,
+      G_CELL         TYPE OLE2_OBJECT,
+      G_RANGE        TYPE OLE2_OBJECT,
+      G_RANGE1       TYPE OLE2_OBJECT,
+      G_FONT         TYPE OLE2_OBJECT,
+      G_CELL1        TYPE OLE2_OBJECT,
+      G_CELL2        TYPE OLE2_OBJECT,
+      G_CELLS        TYPE OLE2_OBJECT,
+      G_COLUMNS      TYPE OLE2_OBJECT,
+      G_FILE         LIKE RLGRAP-FILENAME,
+      G_BORDER       TYPE OLE2_OBJECT,
+      G_COLUMN       TYPE OLE2_OBJECT,
+*      G_ROW       TYPE OLE2_OBJECT,
+      G_WKBK         TYPE OLE2_OBJECT,
+      G_SHEET_NUMBER TYPE I.
+
+INCLUDE ZEXCEL_PUBLIC.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_RESUME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PERNR  text
+*----------------------------------------------------------------------*
+FORM CREATE_RESUME USING E_UCOMM.
+  DATA: L_NAME         LIKE WWWDATATAB,
+        L_RC           LIKE SY-SUBRC,
+        L_FULLPATH     TYPE STRING,
+        L_SHEET_NUMBER TYPE I VALUE 1,
+        L_TEXT         TYPE STRING.
+
+*  CONCATENATE 'C:/HR/' PERNR_JL '-'  NACHN_JL '员工简历' '-' SY-DATUM '.XLS' INTO G_FILE.
+  CONCATENATE 'C:\HR\' PERNR_JL '-'  NACHN_JL '员工简历' '-' SY-DATUM '.XLS' INTO G_FILE.
+
+  IF E_UCOMM = 'RESUME'.
+    L_NAME-RELID = 'MI'.
+    L_NAME-OBJID = 'ZR_HR_PA0021'."EXCEL模板的名ZR_HR_PA002_1
+  ELSEIF E_UCOMM = 'PRINT'.
+    L_NAME-RELID = 'MI'.
+    L_NAME-OBJID = 'ZR_HR_PA002_PRINT'."EXCEL模板的名ZR_HR_PA002_1
+  ENDIF.
+
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      KEY         = L_NAME
+      DESTINATION = G_FILE
+    IMPORTING
+      RC          = L_RC.
+
+  IF L_RC <> 0.
+    MESSAGE '模板文件(SMW0:ZR_HR_PA0021)下载失败，请与开发人员联系!' TYPE 'S'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  L_FULLPATH = G_FILE.
+
+  CONCATENATE '正在处理文件:' G_FILE INTO L_TEXT.
+  CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+    EXPORTING
+      TEXT = L_TEXT.
+
+  PERFORM FRM_OPEN_EXCEL USING L_FULLPATH 0.         " 打开excel模板
+  PERFORM FRM_OPEN_EXCEL_SHEET USING L_SHEET_NUMBER.     "打开excel第一个sheet
+
+  IF E_UCOMM = 'RESUME'.
+    PERFORM FRM_PROCESS_EXCEL.                             "向EXCEL中填充数据
+  ELSEIF E_UCOMM = 'PRINT'.
+    PERFORM FRM_PROCESS_EXCEL_PRINT.                             "向EXCEL中填充数据
+  ENDIF.
+
+
+
+  SET PROPERTY OF G_EXCEL 'VISIBLE'  = 1.                "过程可见 44
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FRM_PROCESS_EXCEL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FRM_PROCESS_EXCEL .
+
+  CONCATENATE 'C:\PH\' PERNR_JL '.jpg' INTO PATH_JL.
+
+*  PERFORM photo_down1 USING pernr_jl 'A' '18000101' '99991231' 'c:\PH\pernr.JPG'.
+  PERFORM PHOTO_DOWN1 USING PERNR_JL 'A' '18000101' '99991231' PATH_JL.
+  PERFORM INSERT_PHOTO.
+  PERFORM FRM_FILL_CELL_NEW1 USING 3 'C' DWMCJL 10 1.
+  LOOP AT JBQK.
+    PERFORM FRM_FILL_CELL_NEW1 USING 4 'C' JBQK-4H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 4 'F' JBQK-4H6L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 4 'I' JBQK-4H9L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 4 'L' JBQK-4H12L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 5 'C' JBQK-5H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 5 'F' JBQK-5H6L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 5 'I' JBQK-5H9L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 5 'L' JBQK-5H12L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 6 'C' JBQK-6H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 6 'F' JBQK-6H6L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 6 'I' JBQK-6H9L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 6 'L' JBQK-6H12L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 7 'C' JBQK-7H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 7 'F' JBQK-7H6L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 7 'I' JBQK-7H9L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 7 'L' JBQK-7H12L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 8 'C' JBQK-8H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 8 'F' JBQK-8H6L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 8 'I' JBQK-8H9L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 8 'L' JBQK-8H12L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 9 'C' JBQK-9H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 9 'F' JBQK-9H6L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 9 'I' JBQK-9H9L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 9 'L' JBQK-9H12L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 10 'C' JBQK-10H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 10 'I' JBQK-10H9L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 11 'C' JBQK-11H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 11 'I' JBQK-11H9L 10 3.
+
+    PERFORM FRM_FILL_CELL_NEW1 USING 12 'C' JBQK-12H3L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING 12 'I' JBQK-12H9L 10 3.
+  ENDLOOP.
+
+  HS = 14.
+  LOOP AT JYXX.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'B' JYXX-13H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'D' JYXX-13H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'F' JYXX-13H6L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'H' JYXX-13H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'K' JYXX-13H11L 10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'N' JYXX-13H14L 10 3.
+    HS = HS + 1.
+  ENDLOOP.
+
+  HS = 21.
+  LOOP AT GSNGZJL.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'B' GSNGZJL-20H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'D' GSNGZJL-20H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'H' GSNGZJL-20H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'M' GSNGZJL-20H13L  10 3.
+    HS = HS + 1.
+  ENDLOOP.
+  CLEAR:GSNGZJL,GSNGZJL[].
+
+  HS = 30.
+  LOOP AT GSWGZJL.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'B' GSWGZJL-29H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'D' GSWGZJL-29H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'H' GSWGZJL-29H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'M' GSWGZJL-29H13L  10 3.
+    HS = HS + 1.
+  ENDLOOP.
+
+  HS = 39.
+  LOOP AT PXQK.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'B' PXQK-38H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'D' PXQK-38H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'H' PXQK-38H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'M' PXQK-38H13L  10 3.
+    HS = HS + 1.
+  ENDLOOP.
+
+  HS = 45.
+  LOOP AT JTCY.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'B' JTCY-44H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'D' JTCY-44H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'F' JTCY-44H6L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'K' JTCY-44H11L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'M' JTCY-44H13L  10 3.
+    PERFORM FRM_FILL_CELL_NEW1 USING HS 'O' JTCY-44H15L  10 3.
+    HS = HS + 1.
+  ENDLOOP.
+
+ENDFORM.                    " FRM_PROCESS_EXCEL
+*&---------------------------------------------------------------------*
+*&      Form  FRM_PROCESS_EXCEL_PRINT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FRM_PROCESS_EXCEL_PRINT .
+  DATA:LT_PRINT(20),HH(30).
+  CLEAR LT_PRINT.
+  CONCATENATE 'C:\PH\' PERNR_JL '.jpg' INTO PATH_JL.
+  PERFORM PHOTO_DOWN1 USING PERNR_JL 'A' '18000101' '99991231' PATH_JL.
+  PERFORM INSERT_PHOTO_PRINT.
+
+  CONCATENATE '员工编号：' PERNR_JL INTO LT_PRINT.
+  PERFORM FRM_FILL_CELL_NEW4 USING 3 'R' LT_PRINT 10 4.        "华文仿宋10加粗
+*  PERFORM FRM_FILL_CELL_NEW5 USING 3 'R' LT_PRINT 10 4.        "华文仿宋不加粗
+  PERFORM FRM_FILL_CELL_NEW5 USING 4 'F' DWMCJL 12 1.
+
+  LOOP AT JBQK.                                                             "基本情况
+    PERFORM FRM_FILL_CELL_NEW5 USING 5 'F' JBQK-4H3L 10 3.       "姓名
+    PERFORM FRM_FILL_CELL_NEW5 USING 5 'N' JBQK-4H6L 10 3.       "性别
+    PERFORM FRM_FILL_CELL_NEW5 USING 6 'F' JBQK-4H12L 10 3.      "出生年月
+    PERFORM FRM_FILL_CELL_NEW5 USING 6 'N' JBQK-4H9L 10 3.       "年龄
+    PERFORM FRM_FILL_CELL_NEW5 USING 7 'F' JBQK-5H6L 10 3.      "民族
+    PERFORM FRM_FILL_CELL_NEW5 USING 7 'N' JBQK-5H9L 10 3.       "籍贯
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 8 'F' JBQK-6H12L 10 3.       "婚姻状况
+    PERFORM FRM_FILL_CELL_NEW5 USING 8 'N' JBQK-7H12L 10 3.       "子女情况
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 9 'F' JBQK-7H6L 10 3.       "政治面貌
+    PERFORM FRM_FILL_CELL_NEW5 USING 9 'N' JBQK-5H12L 10 3.       "户口类型
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 10 'F' JBQK-7H9L 10 3.       "入党时间
+    PERFORM FRM_FILL_CELL_NEW5 USING 10 'N' JBQK-9H6L 10 3.       "参加工作时间
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 11 'F' JBQK-8H6L 10 3.       "入职时间
+    PERFORM FRM_FILL_CELL_NEW5 USING 11 'N' JBQK-11H3L 10 3.       "身份证
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 12 'F' JBQK-8H3L 10 3.       "工龄
+    PERFORM FRM_FILL_CELL_NEW5 USING 12 'N' JBQK-8H9L 10 3.       "移动电话
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 13 'F' JBQK-8H12L 10 3.       "办公电话
+    PERFORM FRM_FILL_CELL_NEW5 USING 13 'N' JBQK-10H9L 10 3.       "紧急联系人电话
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 14 'F' JBQK-9H12L 10 3.       "为信号
+    PERFORM FRM_FILL_CELL_NEW5 USING 14 'N' JBQK-10H3L 10 3.       "电子邮箱
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 15 'F' JBQK-6H6L 10 3.       "学历
+*    PERFORM FRM_FILL_CELL_NEW5 USING 15 'N' JBQK-6H9L 10 3.       "外语水平
+    PERFORM FRM_FILL_CELL_NEW5 USING 15 'N' JBQK-9H3L 10 3.       "职称
+
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 16 'F' JBQK-5H3L 10 3.       "部门
+    PERFORM FRM_FILL_CELL_NEW5 USING 16 'N' JBQK-DNZW 10 3.       "党内职务
+
+    PERFORM FRM_FILL_CELL_NEW5 USING 17 'F' JBQK-6H3L 10 3.       "职位
+    PERFORM FRM_FILL_CELL_NEW5 USING 18 'F' JBQK-12H3L 10 3.       "职业资格
+    PERFORM FRM_FILL_CELL_NEW5 USING 19 'F' JBQK-11H9L 10 3.       "现居住地址
+    PERFORM FRM_FILL_CELL_NEW5 USING 20 'F' JBQK-12H9L 10 3.       "户口所在地地址
+  ENDLOOP.
+
+  HS = 22.
+  LOOP AT JYXX.                                                   "教育信息
+    CONDENSE JYXX-13H2L.
+    CONCATENATE JYXX-13H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF JYXX-13H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'F' JYXX-13H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'H' JYXX-13H6L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'J' JYXX-13H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'Q' JYXX-13H11L 10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'T' JYXX-13H14L 10 3.
+    HS = HS + 1. CLEAR HH.
+  ENDLOOP.
+
+  HS = 31.
+  LOOP AT GSNGZJL.              "公司内工作经历
+    CONDENSE GSNGZJL-20H2L.
+    CONCATENATE GSNGZJL-20H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF GSNGZJL-20H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'F' GSNGZJL-20H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'O' GSNGZJL-20H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'T' GSNGZJL-20H13L  10 3.
+    HS = HS + 1.CLEAR HH.
+  ENDLOOP.
+  CLEAR:GSNGZJL,GSNGZJL[].
+
+  HS = 44.
+  LOOP AT GSWGZJL.             "公司外工作经历
+    CONDENSE GSWGZJL-29H2L.
+    CONCATENATE GSWGZJL-29H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF GSWGZJL-29H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'F' GSWGZJL-29H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'O' GSWGZJL-29H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'T' GSWGZJL-29H13L  10 3.
+    HS = HS + 1.CLEAR HH.
+  ENDLOOP.
+
+  HS = 56.
+  LOOP AT GBPYJH.         "干部培养计划
+    CONDENSE GBPYJH-CJSJ.
+    CONCATENATE GBPYJH-CJSJ+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF GBPYJH-CJSJ+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'F' GBPYJH-ZGBPYXMWB  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'L' GBPYJH-ZZBDW  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'P' GBPYJH-ZCXDW  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'V' GBPYJH-ZKS  10 3.
+    HS = HS + 1. CLEAR HH.
+  ENDLOOP.
+
+  HS = 65.
+  LOOP AT PXQK.
+    CONDENSE PXQK-38H2L.
+    CONCATENATE PXQK-38H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF PXQK-38H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'D' PXQK-38H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'F' PXQK-38H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'O' PXQK-38H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'T' PXQK-38H13L  10 3.
+    HS = HS + 1. CLEAR HH.
+  ENDLOOP.
+
+  HS = 74.
+  LOOP AT JTCY.
+    CONDENSE JTCY-44H2L.
+    CONCATENATE JTCY-44H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF JTCY-44H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'D' JTCY-44H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'F' JTCY-44H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'H' JTCY-44H6L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'O' JTCY-44H11L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'Q' JTCY-44H13L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING HS 'U' JTCY-44H15L  10 3.
+    HS = HS + 1.CLEAR HH.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  PHOTO_DOWN1
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GT_ITAB_PERNR  text
+*      -->P_0213   text
+*      -->P_0214   text
+*      -->P_0215   text
+*      -->P_0216   text
+*----------------------------------------------------------------------*
+FORM PHOTO_DOWN1  USING    P_PERNR LIKE PERNR-PERNR
+                      P_TCLAS LIKE PSPAR-TCLAS
+                      P_BEGDA LIKE PRELP-BEGDA
+                      P_ENDDA LIKE PRELP-ENDDA
+                      PATH TYPE C .
+  DATA: L_CONNECT_INFO LIKE TOAV0,
+        L_EXISTS(1)    TYPE C.
+
+
+  IF SY-SUBRC <> 0.
+*   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  CALL FUNCTION 'HR_IMAGE_EXISTS'
+    EXPORTING
+      P_PERNR        = PERNR_JL
+      P_TCLAS        = P_TCLAS
+      P_BEGDA        = P_BEGDA
+      P_ENDDA        = P_ENDDA
+    IMPORTING
+      P_EXISTS       = L_EXISTS
+      P_CONNECT_INFO = L_CONNECT_INFO
+    EXCEPTIONS
+      OTHERS         = 2.
+  IF SY-SUBRC <> 0.
+    EXIT.
+  ENDIF.
+  CALL FUNCTION 'SCMS_DOC_READ_FILES'
+    EXPORTING
+      STOR_CAT              = SPACE
+      CREP_ID               = L_CONNECT_INFO-ARCHIV_ID
+      DOC_ID                = L_CONNECT_INFO-ARC_DOC_ID
+      PATH                  = PATH
+      FRONTEND              = 'X'
+    TABLES
+      COMPS                 = COMPS2
+      COMP_NAMES            = COMP_NAMES
+    EXCEPTIONS
+      BAD_STORAGE_TYPE      = 1
+      BAD_REQUEST           = 2
+      UNAUTHORIZED          = 3
+      NOT_FOUND             = 4
+      CONFLICT              = 5
+      INTERNAL_SERVER_ERROR = 6
+      ERROR_HTTP            = 7
+      ERROR_SIGNATURE       = 8
+      ERROR_CONFIG          = 9
+      ERROR_HIERARCHY       = 10
+      ERROR_DOWNLOAD        = 11
+      ERROR_OPEN            = 12
+      ERROR_PARAMETER       = 13
+      ERROR                 = 14
+      OTHERS                = 15.
+  IF SY-SUBRC <> 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4 .
+  ENDIF.
+*  PERFORM INSERT_PHOTO.
+ENDFORM.                    " PHOTO_DOWN1
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_PHOTO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM INSERT_PHOTO .
+  CALL METHOD OF G_EXCEL
+    'RUN'
+    EXPORTING
+      #1 = 'MARC1'.
+ENDFORM.                    " INSERT_PHOTO
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_PHOTO_PRINT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM INSERT_PHOTO_PRINT .
+  CALL METHOD OF G_EXCEL
+    'RUN'
+    EXPORTING
+      #1 = 'MARC2'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_PHOTO_PRINT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM INSERT_PHOTO_PRINT01 .
+  CALL METHOD OF G_EXCEL
+    'RUN'
+    EXPORTING
+      #1 = 'LOAD_PIC'.
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_RESUME01
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_UCOMM  text
+*----------------------------------------------------------------------*
+FORM CREATE_RESUME01  USING    P_E_UCOMM P_TABIX.
+
+  PERFORM FRM_PROCESS_EXCEL_PRINT01 USING P_TABIX.                             "向EXCEL中填充数据
+
+  "CALL METHOD OF g_sheet 'PRINTPREVIEW'.
+  "SET PROPERTY OF G_EXCEL 'VISIBLE'  = 1.                "过程可见 44
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  OPEN_EXCEL_SHEET
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM OPEN_EXCEL_SHEET .
+  DATA: L_NAME         LIKE WWWDATATAB,
+        L_RC           LIKE SY-SUBRC,
+        L_FULLPATH     TYPE STRING,
+        L_SHEET_NUMBER TYPE I VALUE 1,
+        L_TEXT         TYPE STRING.
+
+  CONCATENATE 'C:/HR/' PERNR_JL '-员工简历' '-' SY-DATUM '.XLS' INTO G_FILE.
+
+
+  L_NAME-RELID = 'MI'.
+  L_NAME-OBJID = 'ZR_HR_PA002_PRINT01'."EXCEL模板的名ZR_HR_PA002_1
+
+
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      KEY         = L_NAME
+      DESTINATION = G_FILE
+    IMPORTING
+      RC          = L_RC.
+
+  IF L_RC <> 0.
+    MESSAGE '模板文件(SMW0:ZR_HR_PA0021)下载失败，请与开发人员联系!' TYPE 'S'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  L_FULLPATH = G_FILE.
+
+  CONCATENATE '正在处理文件:' G_FILE INTO L_TEXT.
+  CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+    EXPORTING
+      TEXT = L_TEXT.
+
+  PERFORM FRM_OPEN_EXCEL USING L_FULLPATH 0.         " 打开excel模板
+  PERFORM FRM_OPEN_EXCEL_SHEET USING L_SHEET_NUMBER.     "打开excel第一个sheet
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FRM_PROCESS_EXCEL_PRINT01
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FRM_PROCESS_EXCEL_PRINT01 USING I_ROW   .
+  DATA C_ROW TYPE SY-TABIX.
+  DATA:LT_PRINT(20),HH(30).
+
+*  CALL METHOD OF G_EXCEL 'Cells' = g_sheet
+*     EXPORTING
+*     #1 = I_ROW
+*     #2 = 1.
+  PERFORM COPY_TEMPLET USING I_ROW.
+
+  CALL METHOD OF
+        G_WORKBOOK
+        'Sheets'   = G_SHEET
+      EXPORTING
+        #1         = 1.
+  CALL METHOD OF
+    G_SHEET
+    'Activate'.
+
+
+  "加载图片
+  DATA: LS_FILE TYPE STRING,
+        L_RET   TYPE ABAP_BOOL.
+  CONSTANTS: C_YES TYPE C VALUE 'X'.
+  CONCATENATE 'C:\PH\' PERNR_JL '.jpg' INTO PATH_JL.
+  LS_FILE = PATH_JL.
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=>FILE_EXIST
+    EXPORTING
+      FILE                 = LS_FILE
+    RECEIVING
+      RESULT               = L_RET
+    EXCEPTIONS
+      CNTL_ERROR           = 1
+      ERROR_NO_GUI         = 2
+      WRONG_PARAMETER      = 3
+      NOT_SUPPORTED_BY_GUI = 4
+      OTHERS               = 5.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+    WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    EXIT.
+  ENDIF.
+  IF L_RET EQ C_YES.
+  ELSE.
+    PERFORM PHOTO_DOWN1 USING PERNR_JL 'A' '18000101' '99991231' PATH_JL.
+  ENDIF.
+  "PERFORM INSERT_PHOTO_PRINT01.
+
+
+
+  I_ROW = I_ROW - 1.
+  C_ROW = I_ROW .
+
+  C_ROW = I_ROW + 3.
+  CONCATENATE '员工编号：' PERNR_JL INTO LT_PRINT.
+  PERFORM FRM_FILL_CELL_NEW4 USING C_ROW 'R' LT_PRINT 10 4.        "华文仿宋10加粗
+  C_ROW = I_ROW + 4.
+*  PERFORM FRM_FILL_CELL_NEW5 USING 3 'R' LT_PRINT 10 4.        "华文仿宋不加粗
+  PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' DWMCJL 12 1.
+
+
+  LOOP AT JBQK.
+    C_ROW = I_ROW + 5.                                                      "基本情况
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-4H3L 10 3.       "姓名
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-4H6L 10 3.       "性别
+    C_ROW = I_ROW + 6.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-4H12L 10 3.      "出生年月
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-4H9L 10 3.       "年龄
+    C_ROW = I_ROW + 7.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-5H6L 10 3.      "民族
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-5H9L 10 3.       "籍贯
+    C_ROW = I_ROW + 8.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-6H12L 10 3.       "婚姻状况
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-7H12L 10 3.       "子女情况
+    C_ROW = I_ROW + 9.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-7H6L 10 3.       "政治面貌
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-5H12L 10 3.       "户口类型
+    C_ROW = I_ROW + 10.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-7H9L 10 3.       "入党时间
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-9H6L 10 3.       "参加工作时间
+    C_ROW = I_ROW + 11.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-8H6L 10 3.       "入职时间
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-11H3L 10 3.       "身份证
+    C_ROW = I_ROW + 12.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-8H3L 10 3.       "工龄
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-8H9L 10 3.       "移动电话
+    C_ROW = I_ROW + 13.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-8H12L 10 3.       "办公电话
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-10H9L 10 3.       "紧急联系人电话
+    C_ROW = I_ROW + 14.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-9H12L 10 3.       "为信号
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-10H3L 10 3.       "电子邮箱
+    C_ROW = I_ROW + 15.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-6H6L 10 3.       "学历
+*    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-6H9L 10 3.       "外语水平
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-9H3L 10 3.       "职称
+
+    C_ROW = I_ROW + 16.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-5H3L 10 3.       "部门
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'N' JBQK-DNZW 10 3.       "党内职务
+
+    C_ROW = I_ROW + 17.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-6H3L 10 3.       "职位
+    C_ROW = I_ROW + 18.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-12H3L 10 3.       "职业资格
+    C_ROW = I_ROW + 19.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-11H9L 10 3.       "现居住地址
+    C_ROW = I_ROW + 20.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JBQK-12H9L 10 3.       "户口所在地地址
+  ENDLOOP.
+
+  HS = 22.
+  C_ROW = I_ROW + 22.
+  LOOP AT JYXX.                                                   "教育信息
+    CONDENSE JYXX-13H2L.
+    CONCATENATE JYXX-13H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF JYXX-13H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JYXX-13H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'H' JYXX-13H6L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'J' JYXX-13H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW  'Q' JYXX-13H11L 10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'T' JYXX-13H14L 10 3.
+    C_ROW = C_ROW + 1.
+    HS = HS + 1. CLEAR HH.
+  ENDLOOP.
+
+  C_ROW = I_ROW + 31.
+  CONCATENATE '　员工编号：' PERNR_JL INTO LT_PRINT.
+  PERFORM FRM_FILL_CELL_NEW4 USING C_ROW 'A' '.' 10 4.        "华文仿宋10加粗
+  PERFORM FRM_FILL_CELL_NEW4 USING C_ROW 'C' LT_PRINT 10 4.        "华文仿宋10加粗
+  HS = 33.
+  C_ROW = I_ROW + 33.
+  LOOP AT GSNGZJL.              "公司内工作经历
+    CONDENSE GSNGZJL-20H2L.
+    CONCATENATE GSNGZJL-20H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF GSNGZJL-20H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' GSNGZJL-20H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'O' GSNGZJL-20H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'T' GSNGZJL-20H13L  10 3.
+    C_ROW = C_ROW + 1.
+    HS = HS + 1.CLEAR HH.
+  ENDLOOP.
+  CLEAR:GSNGZJL,GSNGZJL[].
+
+  HS = 46.
+  C_ROW = I_ROW + 46.
+  LOOP AT GSWGZJL.             "公司外工作经历
+    CONDENSE GSWGZJL-29H2L.
+    CONCATENATE GSWGZJL-29H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF GSWGZJL-29H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' GSWGZJL-29H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'O' GSWGZJL-29H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'T' GSWGZJL-29H13L  10 3.
+    C_ROW = C_ROW + 1.
+    HS = HS + 1.CLEAR HH.
+  ENDLOOP.
+
+  C_ROW = I_ROW + 58.
+  CONCATENATE '　员工编号：' PERNR_JL INTO LT_PRINT.
+  PERFORM FRM_FILL_CELL_NEW4 USING C_ROW 'A' '.' 10 4.        "华文仿宋10加粗
+  PERFORM FRM_FILL_CELL_NEW4 USING C_ROW 'C' LT_PRINT 10 4.        "华文仿宋10加粗
+
+  HS = 60.
+  C_ROW = I_ROW + 60.
+  LOOP AT GBPYJH.         "干部培养计划
+    CONDENSE GBPYJH-CJSJ.
+    CONCATENATE GBPYJH-CJSJ+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF GBPYJH-CJSJ+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'D' HH  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' GBPYJH-ZGBPYXMWB  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'L' GBPYJH-ZZBDW  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'P' GBPYJH-ZCXDW  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'V' GBPYJH-ZKS  10 3.
+    C_ROW = C_ROW + 1.
+    HS = HS + 1. CLEAR HH.
+  ENDLOOP.
+
+*  HS = 68.
+  HS = 69.
+*  C_ROW = I_ROW + 68.
+  C_ROW = I_ROW + 69.
+  LOOP AT PXQK.
+    CONDENSE PXQK-38H2L.
+    CONCATENATE PXQK-38H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF PXQK-38H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'D' PXQK-38H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' PXQK-38H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'O' PXQK-38H8L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'T' PXQK-38H13L  10 3.
+    C_ROW = C_ROW + 1.
+    HS = HS + 1. CLEAR HH.
+  ENDLOOP.
+
+*  HS = 77.
+  HS = 78.
+*  C_ROW = I_ROW + 77.
+  C_ROW = I_ROW + 78.
+  LOOP AT JTCY.
+    CONDENSE JTCY-44H2L.
+    CONCATENATE JTCY-44H2L+0(11) CL_ABAP_CHAR_UTILITIES=>CR_LF JTCY-44H2L+11(10) INTO HH.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'D' JTCY-44H2L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'F' JTCY-44H4L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'H' JTCY-44H6L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'O' JTCY-44H11L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'Q' JTCY-44H13L  10 3.
+    PERFORM FRM_FILL_CELL_NEW5 USING C_ROW 'U' JTCY-44H15L  10 3.
+    C_ROW = C_ROW + 1.
+    HS = HS + 1.CLEAR HH.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  PREVIEW_XLS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM PREVIEW_XLS .
+  SET PROPERTY OF G_EXCEL 'VISIBLE'  = 1.                "过程可见 44
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  COPY_SAMPLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM COPY_TEMPLET USING S_ROW  .
+  DATA BCELL(10) TYPE C.
+  DATA:LT_PRINT(20),HH(30).
+  CALL METHOD OF
+        G_WORKBOOK
+        'Sheets'   = G_SHEET
+      EXPORTING
+        #1         = 2.
+  CALL METHOD OF
+    G_SHEET
+    'Activate'.
+
+
+
+  CALL METHOD OF G_SHEET 'Range' = G_RANGE
+    EXPORTING
+    #1 = 'A1'
+    #2 = 'V83'.
+  CALL METHOD OF G_RANGE 'copy'.
+
+
+  CALL METHOD OF
+        G_WORKBOOK
+        'Sheets'   = G_SHEET1
+      EXPORTING
+        #1         = 1.
+
+  CLEAR: BCELL.
+  BCELL = S_ROW.
+  CONDENSE BCELL.
+  CONCATENATE 'A' BCELL INTO BCELL.
+  CALL METHOD OF G_SHEET1 'Range' = G_RANGE1
+    EXPORTING
+    #1 = BCELL
+    #2 = BCELL
+    .
+*   Selection.PasteSpecial Paste:=xlPasteColumnWidths, Operation:=xlNone, _
+*        SkipBlanks:=False, Transpose:=False
+
+  CALL METHOD OF G_RANGE1 'PasteSpecial'
+*          EXPORTING
+*          #1 = 'xlPasteColumnWidths'
+*          #2 = 'xlNone'
+*          #3 = 'False'
+*          #4 = 'False'
+    .
+*
+
+*  CALL METHOD OF G_EXCEL
+*    'RUN'
+*    EXPORTING
+*      #1 = 'COPY_SAMPLE'.
+ENDFORM.
+**&---------------------------------------------------------------------*
+**&   (4)   Form  columnwidth
+**&---------------------------------------------------------------------*
+**       设置列宽为自动或是固定值
+**----------------------------------------------------------------------*
+**      -->COLNUM     列号,可以为单个列或是多个列
+**      -->WIDTH      列宽值
+**----------------------------------------------------------------------*
+FORM SET_COLUMN_WIDTH .
+
+  CALL METHOD OF G_EXCEL
+    'RUN'
+    EXPORTING
+      #1 = 'SET_COLWIDTH'.
+  CALL METHOD OF G_EXCEL
+    'RUN'
+    EXPORTING
+      #1 = 'INSERT_BREAK'.
+*  CALL METHOD OF g_excel 'COLUMNS' = columns
+*    EXPORTING
+*    #1 = colnum.
+*  IF width = ''.
+*
+*    CALL METHOD OF columns 'AutoFit'.
+*  ELSE.
+*    SET PROPERTY OF columns 'COLUMNWIDTH' = width.
+*  ENDIF.
+*
+**Set Row Height
+*  call method of cv_excel 'ROWS' = lv_row
+*    exporting
+*    #1 = iv_row_no.
+*
+*  if lv_height is initial.
+*    call method of lv_row 'AutoFit'.
+*  else.
+*    set property of lv_row 'ROWHEIGHT' = lv_height.
+*  endif.
+
+ENDFORM.                    "columnwidth
