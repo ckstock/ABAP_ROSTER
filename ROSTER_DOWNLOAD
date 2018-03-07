@@ -1,0 +1,1518 @@
+*&---------------------------------------------------------------------*
+*&  包含                ZR_HR_PA002_1_DOWNLOAD
+*&---------------------------------------------------------------------*
+  DATA: LI_ROW         TYPE I,
+        LI_CURRENTROW  TYPE I,
+        LI_LINES       TYPE I,
+        LS_CURRENTROW  TYPE STRING,
+        LS_LINES       TYPE STRING,
+        LN_PERCENT(3)  TYPE N,
+        LS_INDCATORTXT TYPE STRING,
+        LI_CELL        TYPE I,
+        N_ROW          TYPE I,
+        P_NUM(20)      TYPE C.
+
+*XML
+  TYPE-POOLS: IXML.
+  DATA L_DOC  TYPE REF TO IF_IXML_DOCUMENT.
+  DATA L_IXML TYPE REF TO IF_IXML.
+  DATA L_ROOT TYPE REF TO IF_IXML_ELEMENT.
+  TYPES: BEGIN OF TY_STYLE,
+           SSID          TYPE STRING,    "STYLE ID
+           SSNAME(10)    TYPE C,         "STYLE NAME
+           ALIGNMENT_HOR TYPE STRING,    "ALIGNMENT HOR
+           ALIGNMENT_VER TYPE STRING,    "ALIGNMENT VER
+           BORDER        TYPE I,         "BORDER   0 NO 1 YES
+           FONT_NAME     TYPE STRING,    "FONT NAME
+           FONT_SIZE     TYPE STRING,    "FONT SIZE EXAMPLEE 12PT
+           FONT_CHARSET  TYPE STRING,    "FONT CHAR SET DEFAULT 134
+           NUMBER_FORMAT TYPE STRING,    "NUMBER FORMAT
+           WRAP_TEXT     TYPE STRING,    "WRAP TEXT
+           BOLD          TYPE STRING,    " BOLD
+         END OF TY_STYLE.
+
+  TYPES: BEGIN OF TY_COLUMN,
+           WIDTH   TYPE STRING,
+           SPAN    TYPE STRING,
+           AFWIDTH TYPE STRING,
+         END OF TY_COLUMN.
+
+  TYPES: BEGIN OF TY_CELL,
+           LINE        TYPE I,
+           CELL        TYPE I,
+           LINE_HEIGHT TYPE STRING,
+           LINE_AFH    TYPE STRING,
+           MERGEACROSS TYPE STRING,
+           MERGEDOWN   TYPE STRING,
+           VALUE       TYPE STRING,
+           STYLE_ID    TYPE STRING,
+           D_TYPE      TYPE I,       "0 STRING 1 NUMBER 2 DATETIME
+         END OF TY_CELL.
+
+  TYPES: TY_T_STYLES  TYPE STANDARD TABLE OF TY_STYLE.
+  TYPES: TY_T_COLUMNS TYPE STANDARD TABLE OF TY_COLUMN.
+  TYPES: TY_T_CELLS   TYPE STANDARD TABLE OF TY_CELL.
+
+  DATA WT_STYLES   TYPE TY_T_STYLES.
+  DATA WT_COLUMNS  TYPE TY_T_COLUMNS.
+  DATA WT_CELLS    TYPE TY_T_CELLS.
+  DATA W_FNAME     TYPE RLGRAP-FILENAME.
+
+  DATA PT2_COLUMNS TYPE TY_T_COLUMNS.
+  DATA PT2_CELLS   TYPE TY_T_CELLS.
+  DATA ORGEH_STEXT LIKE P1000-STEXT.
+
+  DATA: ORGTX_ALL TYPE STRING.
+  DATA  LC_TRANS  TYPE STRING.
+
+  DATA T_POS LIKE TABLE OF STRUC.
+  DATA W_POS LIKE STRUC.
+
+  DATA B_MONTH(2) TYPE C .
+  DATA B_YEAR(4) TYPE C.
+  CONSTANTS:
+    CS_PATH(6) VALUE 'C:\HR\',
+    CO_OBJID   TYPE WWWDATATAB-OBJID VALUE 'ZHRPA002'.
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_USER_COMMAND1
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_UCOMM  text
+*----------------------------------------------------------------------*
+  FORM HANDLE_USER_COMMAND1  USING E_UCOMM.
+    DATA:WA_NEW_LINE TYPE REF TO DATA,
+         I           TYPE SY-TABIX,
+         C_ROW       TYPE SY-TABIX.
+
+    CREATE DATA WA_NEW_LINE LIKE LINE OF <DYN_TABLE>.  " 建立一个与动态内表结构相同的数据对象，且数据对象为是一个结构
+    ASSIGN WA_NEW_LINE->* TO <DYN_WA>." 用<dyn_wa>指针指向该结构
+    FIELD-SYMBOLS:<FIELD>   TYPE  ANY,<CHECK_X> TYPE ANY.
+
+    CASE E_UCOMM.
+      WHEN 'EXCEL'.
+        PERFORM EXCEL_OUT.
+
+      WHEN 'RESUME' OR 'PRINT' OR 'PRINTS'.
+        IF E_UCOMM = 'PRINTS'.
+          CONCATENATE '开始打开EXCEL'  '文件......' INTO MSG.
+          CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+            EXPORTING
+              PERCENTAGE = 0
+              TEXT       = MSG
+            EXCEPTIONS
+              OTHERS     = 1.
+          PERFORM OPEN_EXCEL_SHEET.
+          CLEAR: I.
+        ENDIF.
+        LOOP AT <DYN_TABLE> ASSIGNING <DYN_WA>.
+          ASSIGN COMPONENT 1 OF STRUCTURE <DYN_WA> TO <CHECK_X>.
+          IF  <CHECK_X> = 'X'.
+            ASSIGN COMPONENT 4 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            PERNR_JL = <FIELD>.
+
+***********************************基本情况信息读取**********************
+            JBQK-PERNR = PERNR_JL.   "人员编号
+
+
+            ASSIGN COMPONENT 3 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-4H3L = <FIELD>.   NACHN_JL =  <FIELD>.  "姓名
+            ASSIGN COMPONENT 20 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-4H6L = <FIELD>.     "性别
+            ASSIGN COMPONENT 23 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-4H9L = <FIELD>.     "年龄
+            ASSIGN COMPONENT 22 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-4H12L = <FIELD>.     "出生日期
+            IF JBQK-4H12L IS NOT INITIAL.
+              CONCATENATE JBQK-4H12L+0(4) '.' JBQK-4H12L+4(2) '.' JBQK-4H12L+6(2) INTO JBQK-4H12L.
+            ENDIF.
+
+
+            SELECT SINGLE ORGEH INTO ORGEH FROM PA0001 WHERE PERNR = PERNR_JL AND ENDDA = '99991231'.
+            SELECT SINGLE STEXT INTO JBQK-5H3L FROM HRP1000
+              WHERE OTYPE = 'O' AND PLVAR = '01' AND OBJID = ORGEH AND ENDDA = '99991231'.      "部门
+            ASSIGN COMPONENT 21 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-5H6L = <FIELD>.     "民族
+            ASSIGN COMPONENT 24 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-5H9L = <FIELD>.     "籍贯
+            ASSIGN COMPONENT 27 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-5H12L = <FIELD>.    "户口类型
+
+            ASSIGN COMPONENT 14 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-6H3L = <FIELD>.     "职位
+            ASSIGN COMPONENT 33 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-6H6L = <FIELD>.     "学历
+            ASSIGN COMPONENT 43 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-6H9L = <FIELD>.     "外语水平
+            ASSIGN COMPONENT 49 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-6H12L = <FIELD>.    "婚姻状况
+
+            ASSIGN COMPONENT 19 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-7H3L = <FIELD>.     "薪级薪档
+            ASSIGN COMPONENT 25 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-7H6L = <FIELD>.     "政治面貌
+            ASSIGN COMPONENT 26 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-7H9L = <FIELD>.     "入党时间
+            IF JBQK-7H9L IS NOT INITIAL.
+              CONCATENATE JBQK-7H9L+0(4) '.' JBQK-7H9L+4(2) '.' JBQK-7H9L+6(2) INTO JBQK-7H9L.
+            ENDIF.
+            ASSIGN COMPONENT 50 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-7H12L = <FIELD>.    "子女情况
+
+            ASSIGN COMPONENT 46 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-8H3L = <FIELD>.     "工龄
+            ASSIGN COMPONENT 45 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-8H6L = <FIELD>.     "入职日期
+            IF JBQK-8H6L IS NOT INITIAL.
+              CONCATENATE JBQK-8H6L+0(4) '.' JBQK-8H6L+4(2) '.' JBQK-8H6L+6(2) INTO JBQK-8H6L.
+            ENDIF.
+            ASSIGN COMPONENT 54 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-8H9L = <FIELD>.     "移动电话
+            ASSIGN COMPONENT 56 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-8H12L = <FIELD>.    "办公电话
+
+            ASSIGN COMPONENT 38 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-9H3L = <FIELD>.     "职称
+            ASSIGN COMPONENT 44 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-9H6L = <FIELD>.     "参加工作时间
+            IF JBQK-9H6L IS NOT INITIAL.
+              CONCATENATE JBQK-9H6L+0(4) '.' JBQK-9H6L+4(2) '.' JBQK-9H6L+6(2) INTO JBQK-9H6L.
+            ENDIF.
+            ASSIGN COMPONENT 59 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-9H9L = <FIELD>.     "QQ
+            ASSIGN COMPONENT 60 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-9H12L = <FIELD>.    "微信号
+
+            ASSIGN COMPONENT 57 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-10H3L = <FIELD>.     "电子邮箱
+            IF JBQK-10H3L IS INITIAL.
+              ASSIGN COMPONENT 58 OF STRUCTURE <DYN_WA> TO <FIELD>.
+              JBQK-10H3L = <FIELD>.     "电子邮箱
+            ENDIF.
+
+            ASSIGN COMPONENT 31 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-10H9L = <FIELD>.     "紧急联系人
+            ASSIGN COMPONENT 32 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            CONCATENATE JBQK-10H9L '-' <FIELD> INTO JBQK-10H9L.    "紧急联系人及电话
+
+            ASSIGN COMPONENT 47 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-11H3L = <FIELD>.     "身份证号
+            ASSIGN COMPONENT 52 OF STRUCTURE <DYN_WA> TO <FIELD>.
+            JBQK-11H9L = <FIELD>.     "现居住地址
+
+            CLEAR:SY-TABIX.
+            LOOP AT LT_PA9008 WHERE PERNR = PERNR_JL. "执业资格
+              IF JBQK-12H3L IS INITIAL.
+                JBQK-12H3L = LT_PA9008-ZZYZGMC.
+              ELSE.
+                CONCATENATE JBQK-12H3L '/' LT_PA9008-ZZYZGMC INTO JBQK-12H3L.
+              ENDIF.
+            ENDLOOP.
+
+            LOOP AT LT_PA9000 WHERE PERNR = PERNR_JL. "户口所在地地址
+              IF JBQK-12H9L IS INITIAL .
+                JBQK-12H9L = LT_PA9000-ZHKXXDZ.
+              ELSE.
+                CONCATENATE JBQK-12H9L '/' LT_PA9000-ZHKXXDZ INTO JBQK-12H9L.
+              ENDIF.
+            ENDLOOP.
+
+            "党内职务
+            CALL FUNCTION 'RH_STRUC_GET'
+              EXPORTING
+                ACT_OTYPE      = 'P'
+                ACT_OBJID      = PERNR_JL
+                ACT_WEGID      = 'ZP2120'
+*               ACT_INT_FLAG   =
+                ACT_PLVAR      = '01'
+                ACT_BEGDA      = SY-DATUM
+                ACT_ENDDA      = SY-DATUM
+              TABLES
+*               RESULT_TAB     =
+                RESULT_OBJEC   = AT_OBJEC
+                RESULT_STRUC   = AT_STRUC
+              EXCEPTIONS
+                NO_PLVAR_FOUND = 1
+                NO_ENTRY_FOUND = 2
+                OTHERS         = 3.
+            IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+            ENDIF.
+            DELETE AT_OBJEC WHERE OTYPE NE '21'.
+            LOOP AT AT_OBJEC WHERE OTYPE = '21'.
+              IF JBQK-DNZW IS INITIAL.
+                JBQK-DNZW = AT_OBJEC-STEXT.
+              ELSE.
+                CONCATENATE JBQK-DNZW '/' AT_OBJEC-STEXT INTO JBQK-DNZW.
+              ENDIF.
+            ENDLOOP.
+
+            APPEND JBQK.CLEAR JBQK.
+***********************************基本情况信息读取**********************
+
+
+
+***********************************教育信息**********************
+*            SELECT PERNR ZXL ZRXRQ  ZBYRQ  ZXLWB  ZXWWB  ZBYYXWB ZZXZYWB ZXXXSWB ZQTYX ZZXQTZY
+*              INTO CORRESPONDING FIELDS OF TABLE LT_PA9002
+*              FROM PA9002 WHERE PERNR = PERNR_JL.
+*            SORT LT_PA9002 BY  ZXL.
+*            DO 6 TIMES.
+*              READ TABLE LT_PA9002 INDEX SY-INDEX.
+*              IF SY-SUBRC = 0.
+*                CONCATENATE LT_PA9002-ZRXRQ+0(4) '.' LT_PA9002-ZRXRQ+4(2) '.' LT_PA9002-ZRXRQ+6(2)
+*                '～' LT_PA9002-ZBYRQ+0(4) '.' LT_PA9002-ZBYRQ+4(2) '.' LT_PA9002-ZBYRQ+6(2) INTO JYXX-13H2L.
+*                JYXX-13H4L = LT_PA9002-ZXLWB.
+*                JYXX-13H6L = LT_PA9002-ZXWWB.
+*                IF LT_PA9002-ZBYYXWB = '其他院校'.
+*                  JYXX-13H8L = LT_PA9002-ZQTYX.
+*                ELSE.
+*                  JYXX-13H8L = LT_PA9002-ZBYYXWB.
+*                ENDIF.
+*                IF LT_PA9002-ZZXZYWB = '其他'.
+*                  JYXX-13H11L = LT_PA9002-ZZXQTZY.
+*                ELSE.
+*                  JYXX-13H11L = LT_PA9002-ZZXZYWB.
+*                ENDIF.
+*                JYXX-13H14L = LT_PA9002-ZXXXSWB.
+*                APPEND JYXX.CLEAR JYXX.
+*              ENDIF.
+*            ENDDO.
+            SELECT *"PERNR ZXL ZRXRQ  ZBYRQ  ZXLWB  ZXWWB  ZBYYXWB ZZXZYWB ZXXXSWB ZQTYX ZZXQTZY
+              INTO CORRESPONDING FIELDS OF TABLE LT_PA9002
+              FROM PA9002 WHERE PERNR = PERNR_JL.
+            SORT LT_PA9002 BY  ZRXRQ DESCENDING.
+            DO 6 TIMES.
+              READ TABLE LT_PA9002 INDEX SY-INDEX.
+              IF SY-SUBRC = 0.
+                CONCATENATE LT_PA9002-ZRXRQ+0(4) '.' LT_PA9002-ZRXRQ+4(2) '.' LT_PA9002-ZRXRQ+6(2)
+                '～' LT_PA9002-ZBYRQ+0(4) '.' LT_PA9002-ZBYRQ+4(2) '.' LT_PA9002-ZBYRQ+6(2) INTO JYXX-13H2L.
+                JYXX-13H4L = LT_PA9002-ZXLWB.
+                JYXX-13H6L = LT_PA9002-ZXWWB.
+                IF LT_PA9002-ZBYYXWB = '其他院校'.
+                  JYXX-13H8L = LT_PA9002-ZQTYX.
+                ELSE.
+                  JYXX-13H8L = LT_PA9002-ZBYYXWB.
+                ENDIF.
+                IF LT_PA9002-ZZXZYWB = '其他'.
+                  JYXX-13H11L = LT_PA9002-ZZXQTZY.
+                ELSE.
+                  JYXX-13H11L = LT_PA9002-ZZXZYWB.
+                ENDIF.
+                JYXX-13H14L = LT_PA9002-ZXXXSWB.
+                APPEND JYXX.CLEAR JYXX.
+              ENDIF.
+            ENDDO.
+***********************************教育信息**********************
+
+
+
+***********************************公司内工作经历**********************
+*            SELECT A~PERNR A~BEGDA A~ENDDA A~WERKS A~ORGEH A~PLANS
+*              B~NAME1 AS ZGZDWN C~STEXT AS ZBMN D~PLSTX AS ZZWN
+*              INTO CORRESPONDING FIELDS OF TABLE LT_GSNGZJL FROM PA0001 AS A
+*              INNER JOIN T500P AS B ON B~PERSA = A~WERKS
+*              LEFT JOIN HRP1000 AS C ON C~OBJID = A~ORGEH AND C~OTYPE = 'O' AND C~PLVAR = '01'
+*              LEFT JOIN T528T AS D ON D~PLANS = A~PLANS AND D~SPRSL = '1' AND D~OTYPE = 'S'
+*                        AND D~BEGDA <= A~BEGDA AND D~ENDDA >= A~ENDDA
+*              WHERE A~PERNR = PERNR_JL.
+*            SORT LT_GSNGZJL BY BEGDA.
+
+            "以下修改 取数逻辑 （20151231 从PA9004取，之后从HRP1001取   2016-05-06
+****************************************    "20171108李瀚修改
+*            PERFORM GSNJL USING PERNR_JL."20171108李瀚修改
+
+            DATA: WA_HRP1001 TYPE HRP1001,
+                  SOBID      TYPE HRP1001-SOBID,  "主岗单位
+                  SOBID1     TYPE HRP1001-SOBID,  "主岗单位
+                  ZGZDWN(60) TYPE C,
+                  OBJID      TYPE HROBJID.
+            DATA: LS_GSNGZJL LIKE LT_GSNGZJL OCCURS 0 WITH HEADER LINE.
+            REFRESH: LT_GSNGZJL, LS_GSNGZJL.
+            CLEAR  : LT_GSNGZJL, LS_GSNGZJL.
+            SELECT  * INTO WA_HRP1001 FROM HRP1001 WHERE  OBJID = PERNR_JL AND OTYPE = 'P' AND SCLAS = 'S' .
+*              IF WA_HRP1001-PROZT = 100.
+*                SOBID = WA_HRP1001-SOBID.
+*              ENDIF.
+              LS_GSNGZJL-PERNR = WA_HRP1001-OBJID.
+              LS_GSNGZJL-BEGDA = WA_HRP1001-BEGDA.
+              LS_GSNGZJL-ENDDA = WA_HRP1001-ENDDA.
+              LS_GSNGZJL-WERKS = WA_HRP1001-SOBID.
+              "LS_GSNGZJL-ORGEH = WA_HRP1001-PROZT.    "100% 为主岗
+              LS_GSNGZJL-PROZT = WA_HRP1001-PROZT.
+              LS_GSNGZJL-PLANS = WA_HRP1001-SOBID.
+              APPEND LS_GSNGZJL.
+              CLEAR: LS_GSNGZJL.
+            ENDSELECT.
+            LT_GSNGZJL[] = LS_GSNGZJL[].
+
+*    DELETE LT_GSNGZJL WHERE BEGDA < '20150101' .
+
+
+            SORT LT_GSNGZJL BY BEGDA ENDDA PLANS.
+            DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL COMPARING BEGDA ENDDA PLANS.
+            SORT LT_GSNGZJL BY ENDDA DESCENDING.
+*            "取主岗最小单位
+*            CLEAR: WA_HRP1001.
+*            SELECT SINGLE * INTO WA_HRP1001 FROM HRP1001 WHERE OBJID = SOBID AND OTYPE = 'O' AND SCLAS = 'O'.
+*            "最小单位描述
+*            SELECT SINGLE STEXT INTO zgzdwn FROM HRP1000 WHERE OTYPE = 'O' AND OBJID = WA_HRP1001-SOBID.
+*
+            LOOP AT LT_GSNGZJL.
+              IF LT_GSNGZJL-PROZT = '100'.
+                IF SY-TABIX = 1.
+                  "工作单位
+                  READ TABLE GT_MIAN_DATA WITH KEY PERNR = LT_GSNGZJL-PERNR.
+                  IF SY-SUBRC = 0.
+                    IF GT_MIAN_DATA-ORG4 NE  ''.
+                      LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG4.
+                    ELSE.
+                      IF GT_MIAN_DATA-ORG3 NE  ''.
+                        LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG3.
+                      ELSE.
+                        IF GT_MIAN_DATA-ORG2 NE  ''.
+                          LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG2.
+                        ELSE.
+                          IF GT_MIAN_DATA-ORG1 NE  ''.
+                            LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG1.
+                          ELSE.
+                            LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG.
+                          ENDIF.
+                        ENDIF.
+                      ENDIF.
+                    ENDIF.
+                  ENDIF.
+                ELSE.
+                  "取部门名称
+                  CLEAR:SOBID.
+                  SELECT SINGLE SOBID INTO SOBID FROM HRP1001 WHERE OTYPE = 'S' AND OBJID = LT_GSNGZJL-PLANS AND SCLAS = 'O' AND PLVAR = '01'.
+                  SELECT SINGLE STEXT INTO LT_GSNGZJL-ZBMN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = SOBID AND ENDDA = '99991231'.
+                ENDIF.
+*                "取相同职务的最早开始日期
+*                SORT LS_GSNGZJL BY PLANS BEGDA.
+*                READ TABLE LS_GSNGZJL WITH KEY PLANS = LT_GSNGZJL-PLANS.
+*                IF SY-SUBRC = 0.
+*                  LT_GSNGZJL-BEGDA =  LS_GSNGZJL-BEGDA.
+*                ENDIF.
+*                "取相同职务的最晚开始日期
+*                SORT LS_GSNGZJL BY PLANS ENDDA DESCENDING.
+*                READ TABLE LS_GSNGZJL WITH KEY PLANS = LT_GSNGZJL-PLANS.
+*                IF SY-SUBRC = 0.
+*                  LT_GSNGZJL-ENDDA =  LS_GSNGZJL-ENDDA.
+*                ENDIF.
+                "取部门名称
+                SELECT SINGLE WERKS INTO LT_GSNGZJL-WERKS
+                       FROM PA0001
+                       WHERE PERNR = LT_GSNGZJL-PERNR AND BEGDA <= LT_GSNGZJL-ENDDA AND ENDDA  >=  LT_GSNGZJL-BEGDA.
+                SELECT SINGLE NAME1 INTO LT_GSNGZJL-ZGZDWN  FROM T500P WHERE PERSA = LT_GSNGZJL-WERKS  .
+                "取岗位名称
+*                LOOP AT LS_GSNGZJL WHERE BEGDA = LT_GSNGZJL-BEGDA AND ENDDA = LT_GSNGZJL-ENDDA.
+                SELECT SINGLE   PLSTX INTO LT_GSNGZJL-ZZWN FROM T528T WHERE PLANS = LT_GSNGZJL-PLANS AND SPRSL = '1' AND OTYPE = 'S' AND ENDDA = '99991231' .
+*                  IF LS_GSNGZJL-ZZWN CO LT_GSNGZJL-ZZWN.
+*                  ELSE.
+*                    CONCATENATE LT_GSNGZJL-ZZWN ',' LS_GSNGZJL-ZZWN INTO LT_GSNGZJL-ZZWN.
+*                  ENDIF.
+*                ENDLOOP.
+*                SHIFT LT_GSNGZJL-ZZWN LEFT DELETING LEADING ','.
+*                LT_GSNGZJL-ZZWN = LS_GSNGZJL-ZZWN.
+*                APPEND LT_GSNGZJL.CLEAR LT_GSNGZJL.
+                MODIFY  LT_GSNGZJL. CLEAR LT_GSNGZJL.
+              ELSE.
+                "取部门名称
+                CLEAR:SOBID.
+                SELECT SINGLE SOBID INTO SOBID FROM HRP1001 WHERE OTYPE = 'S' AND OBJID = LT_GSNGZJL-PLANS AND SCLAS = 'O' AND PLVAR = '01'.
+                SELECT SINGLE STEXT INTO LT_GSNGZJL-ZGZDWN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = SOBID AND ENDDA = '99991231'.
+                "工作单位
+                CLEAR:OBJID,SOBID1.
+                SELECT SINGLE SOBID INTO SOBID1 FROM HRP1001 WHERE OTYPE = 'O' AND OBJID = SOBID AND SCLAS = 'O' AND PLVAR = '01' AND RSIGN = 'A'.
+                OBJID = SOBID1.
+                SELECT SINGLE STEXT INTO LT_GSNGZJL-ZBMN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = OBJID  AND ENDDA = '99991231'.
+                "取岗位名称
+*                LOOP AT LS_GSNGZJL WHERE BEGDA = LT_GSNGZJL-BEGDA AND ENDDA = LT_GSNGZJL-ENDDA.
+                SELECT SINGLE  PLSTX INTO LT_GSNGZJL-ZZWN FROM T528T WHERE PLANS = LT_GSNGZJL-PLANS AND SPRSL = '1' AND OTYPE = 'S' AND ENDDA = '99991231'.
+*                  IF LS_GSNGZJL-ZZWN CO LT_GSNGZJL-ZZWN.
+*                  ELSE.
+*                    CONCATENATE LT_GSNGZJL-ZZWN ',' LS_GSNGZJL-ZZWN INTO LT_GSNGZJL-ZZWN.
+*                  ENDIF.
+*                ENDLOOP.
+*                SHIFT LT_GSNGZJL-ZZWN LEFT DELETING LEADING ','.
+*                MODIFY  LT_GSNGZJL.CLEAR LT_GSNGZJL.
+*
+*                LT_GSNGZJL-ZZWN = LS_GSNGZJL-ZZWN.
+                MODIFY  LT_GSNGZJL.CLEAR LT_GSNGZJL.
+*                APPEND LT_GSNGZJL.CLEAR LT_GSNGZJL.
+              ENDIF.
+            ENDLOOP.
+            REFRESH LS_GSNGZJL.
+
+            DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL COMPARING ALL FIELDS.
+            DELETE LT_GSNGZJL WHERE ENDDA < '20150101'.
+            SORT LT_GSNGZJL BY BEGDA.
+
+            READ TABLE JBQK WITH KEY PERNR = PERNR_JL."20150101 以前入职的看pa9004。
+            IF SY-SUBRC = 0.
+              IF JBQK-8H6L < '20150101'.
+                SELECT PERNR BEGDA ENDDA  ZGZDWN  ZBMN  ZZWN
+                      INTO CORRESPONDING FIELDS OF TABLE LT_GSNGZJL1 FROM PA9004
+                      WHERE PERNR = PERNR_JL AND BEGDA < '20150101'.
+                SORT LT_GSNGZJL1 BY BEGDA DESCENDING.
+
+                DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL1 COMPARING ALL FIELDS.
+
+                LOOP AT LT_GSNGZJL WHERE PROZT = '100' AND BEGDA < '20150101'.
+*          IF SY-TABIX = 1.
+                  READ TABLE LT_GSNGZJL1 INDEX 1.
+                  IF SY-SUBRC = 0.
+                    IF LT_GSNGZJL-ENDDA BETWEEN LT_GSNGZJL1-BEGDA AND LT_GSNGZJL1-ENDDA.
+*              RIQI_JL = LT_GSNGZJL1-ENDDA.
+*              RIQI_JL = RIQI_JL + 1.
+                      LT_GSNGZJL-BEGDA = LT_GSNGZJL1-BEGDA.
+                      MODIFY LT_GSNGZJL. CLEAR LT_GSNGZJL.
+                      LOOP AT LT_GSNGZJL1.
+                        DELETE LT_GSNGZJL1.
+                        EXIT.
+                      ENDLOOP.
+
+                    ELSEIF LT_GSNGZJL-ENDDA > LT_GSNGZJL1-ENDDA.
+                      RIQI_JL = LT_GSNGZJL1-ENDDA.
+                      RIQI_JL = RIQI_JL + 1.
+                      LT_GSNGZJL-BEGDA = RIQI_JL.
+                      MODIFY LT_GSNGZJL. CLEAR LT_GSNGZJL.
+                    ELSEIF LT_GSNGZJL-ENDDA <  LT_GSNGZJL1-BEGDA.
+
+                    ENDIF.
+*            ENDIF.
+                  ENDIF.
+                ENDLOOP.
+                LOOP AT LT_GSNGZJL1.
+*          IF SY-TABIX = 1.
+*            CONTINUE.
+*          ENDIF.
+                  APPEND LT_GSNGZJL1 TO LT_GSNGZJL. CLEAR LT_GSNGZJL1.
+                ENDLOOP.
+
+                CLEAR:LT_GSNGZJL1,LT_GSNGZJL1[].
+
+
+              ENDIF.
+
+            ENDIF.
+************************************************"20171108李瀚修改
+*            DATA: WA_HRP1001 TYPE HRP1001,
+*                  SOBID      TYPE HRP1001-SOBID,  "主岗单位
+*                  SOBID1     TYPE HRP1001-SOBID,  "主岗单位
+*                  ZGZDWN(60) TYPE C,
+*                  OBJID      TYPE HROBJID.
+*            DATA: LS_GSNGZJL LIKE LT_GSNGZJL OCCURS 0 WITH HEADER LINE.
+*            REFRESH: LT_GSNGZJL, LS_GSNGZJL.
+*            CLEAR  : LT_GSNGZJL, LS_GSNGZJL.
+*            SELECT  * INTO WA_HRP1001 FROM HRP1001 WHERE  OBJID = PERNR_JL AND OTYPE = 'P' AND SCLAS = 'S' .
+**              IF WA_HRP1001-PROZT = 100.
+**                SOBID = WA_HRP1001-SOBID.
+**              ENDIF.
+*              LS_GSNGZJL-PERNR = WA_HRP1001-OBJID.
+*              LS_GSNGZJL-BEGDA = WA_HRP1001-BEGDA.
+*              LS_GSNGZJL-ENDDA = WA_HRP1001-ENDDA.
+*              LS_GSNGZJL-WERKS = WA_HRP1001-SOBID.
+*              "LS_GSNGZJL-ORGEH = WA_HRP1001-PROZT.    "100% 为主岗
+*              LS_GSNGZJL-PROZT = WA_HRP1001-PROZT.
+*              LS_GSNGZJL-PLANS = WA_HRP1001-SOBID.
+*              APPEND LS_GSNGZJL.
+*              CLEAR: LS_GSNGZJL.
+*            ENDSELECT.
+*            LT_GSNGZJL[] = LS_GSNGZJL[].
+*            SORT LT_GSNGZJL BY BEGDA ENDDA PLANS.
+*            DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL COMPARING BEGDA ENDDA PLANS.
+*            SORT LT_GSNGZJL BY ENDDA DESCENDING.
+**            "取主岗最小单位
+**            CLEAR: WA_HRP1001.
+**            SELECT SINGLE * INTO WA_HRP1001 FROM HRP1001 WHERE OBJID = SOBID AND OTYPE = 'O' AND SCLAS = 'O'.
+**            "最小单位描述
+**            SELECT SINGLE STEXT INTO zgzdwn FROM HRP1000 WHERE OTYPE = 'O' AND OBJID = WA_HRP1001-SOBID.
+**
+*            LOOP AT LT_GSNGZJL.
+*              IF LT_GSNGZJL-PROZT = '100'.
+*                IF SY-TABIX = 1.
+*                  "工作单位
+*                  READ TABLE GT_MIAN_DATA WITH KEY PERNR = LT_GSNGZJL-PERNR.
+*                  IF SY-SUBRC = 0.
+*                    IF GT_MIAN_DATA-ORG4 NE  ''.
+*                      LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG4.
+*                    ELSE.
+*                      IF GT_MIAN_DATA-ORG3 NE  ''.
+*                        LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG3.
+*                      ELSE.
+*                        IF GT_MIAN_DATA-ORG2 NE  ''.
+*                          LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG2.
+*                        ELSE.
+*                          IF GT_MIAN_DATA-ORG1 NE  ''.
+*                            LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG1.
+*                          ELSE.
+*                            LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG.
+*                          ENDIF.
+*                        ENDIF.
+*                      ENDIF.
+*                    ENDIF.
+*                  ENDIF.
+*                ELSE.
+*                  "取部门名称
+*                  CLEAR:SOBID.
+*                  SELECT SINGLE SOBID INTO SOBID FROM HRP1001 WHERE OTYPE = 'S' AND OBJID = LT_GSNGZJL-PLANS AND SCLAS = 'O' AND PLVAR = '01'.
+*                  SELECT SINGLE STEXT INTO LT_GSNGZJL-ZBMN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = SOBID.
+*                ENDIF.
+**                "取相同职务的最早开始日期
+**                SORT LS_GSNGZJL BY PLANS BEGDA.
+**                READ TABLE LS_GSNGZJL WITH KEY PLANS = LT_GSNGZJL-PLANS.
+**                IF SY-SUBRC = 0.
+**                  LT_GSNGZJL-BEGDA =  LS_GSNGZJL-BEGDA.
+**                ENDIF.
+**                "取相同职务的最晚开始日期
+**                SORT LS_GSNGZJL BY PLANS ENDDA DESCENDING.
+**                READ TABLE LS_GSNGZJL WITH KEY PLANS = LT_GSNGZJL-PLANS.
+**                IF SY-SUBRC = 0.
+**                  LT_GSNGZJL-ENDDA =  LS_GSNGZJL-ENDDA.
+**                ENDIF.
+*                "取部门名称
+*                SELECT SINGLE WERKS INTO LT_GSNGZJL-WERKS
+*                       FROM PA0001
+*                       WHERE PERNR = LT_GSNGZJL-PERNR AND BEGDA <= LT_GSNGZJL-ENDDA AND ENDDA  >=  LT_GSNGZJL-BEGDA.
+*                SELECT SINGLE NAME1 INTO LT_GSNGZJL-ZGZDWN  FROM T500P WHERE PERSA = LT_GSNGZJL-WERKS.
+*                "取岗位名称
+*                LOOP AT LS_GSNGZJL WHERE BEGDA = LT_GSNGZJL-BEGDA AND ENDDA = LT_GSNGZJL-ENDDA.
+*                  SELECT SINGLE   PLSTX INTO LS_GSNGZJL-ZZWN FROM T528T WHERE PLANS = LS_GSNGZJL-PLANS AND SPRSL = '1' AND OTYPE = 'S'.
+*                  IF LS_GSNGZJL-ZZWN CO LT_GSNGZJL-ZZWN.
+*                  ELSE.
+*                    CONCATENATE LT_GSNGZJL-ZZWN ',' LS_GSNGZJL-ZZWN INTO LT_GSNGZJL-ZZWN.
+*                  ENDIF.
+*                ENDLOOP.
+*                SHIFT LT_GSNGZJL-ZZWN LEFT DELETING LEADING ','.
+*                MODIFY  LT_GSNGZJL. CLEAR LT_GSNGZJL.
+*              ELSE.
+*                "取部门名称
+*                CLEAR:SOBID.
+*                SELECT SINGLE SOBID INTO SOBID FROM HRP1001 WHERE OTYPE = 'S' AND OBJID = LT_GSNGZJL-PLANS AND SCLAS = 'O' AND PLVAR = '01'.
+*                SELECT SINGLE STEXT INTO LT_GSNGZJL-ZGZDWN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = SOBID.
+*                "工作单位
+*                CLEAR:OBJID,SOBID1.
+*                SELECT SINGLE SOBID INTO SOBID1 FROM HRP1001 WHERE OTYPE = 'O' AND OBJID = SOBID AND SCLAS = 'O' AND PLVAR = '01' AND RSIGN = 'A'.
+*                OBJID = SOBID1.
+*                SELECT SINGLE STEXT INTO LT_GSNGZJL-ZBMN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = OBJID.
+*                "取岗位名称
+*                LOOP AT LS_GSNGZJL WHERE BEGDA = LT_GSNGZJL-BEGDA AND ENDDA = LT_GSNGZJL-ENDDA.
+*                  SELECT SINGLE  PLSTX INTO LS_GSNGZJL-ZZWN FROM T528T WHERE PLANS = LS_GSNGZJL-PLANS AND SPRSL = '1' AND OTYPE = 'S'.
+*                  IF LS_GSNGZJL-ZZWN CO LT_GSNGZJL-ZZWN.
+*                  ELSE.
+*                    CONCATENATE LT_GSNGZJL-ZZWN ',' LS_GSNGZJL-ZZWN INTO LT_GSNGZJL-ZZWN.
+*                  ENDIF.
+*                ENDLOOP.
+*                SHIFT LT_GSNGZJL-ZZWN LEFT DELETING LEADING ','.
+*                MODIFY  LT_GSNGZJL.CLEAR LT_GSNGZJL.
+*              ENDIF.
+*            ENDLOOP.
+*            REFRESH LS_GSNGZJL.
+*
+*            DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL COMPARING ALL FIELDS.
+*
+*            SELECT PERNR BEGDA ENDDA  ZGZDWN  ZBMN  ZZWN
+*              INTO CORRESPONDING FIELDS OF TABLE LT_GSNGZJL1 FROM PA9004
+*              WHERE PERNR = PERNR_JL AND ENDDA <> '99991231'.
+*            SORT LT_GSNGZJL1 BY BEGDA DESCENDING.
+*
+*            DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL1 COMPARING ALL FIELDS.
+*
+*            LOOP AT LT_GSNGZJL.
+*              IF SY-TABIX = 1.
+*                READ TABLE LT_GSNGZJL1 INDEX 1.
+*                IF SY-SUBRC = 0.
+*                  IF LT_GSNGZJL-BEGDA <= LT_GSNGZJL1-ENDDA.
+*                    RIQI_JL = LT_GSNGZJL1-ENDDA.
+*                    RIQI_JL = RIQI_JL + 1.
+*                    LT_GSNGZJL-BEGDA = RIQI_JL.
+*                    MODIFY LT_GSNGZJL. CLEAR LT_GSNGZJL.
+*                  ENDIF.
+*                ENDIF.
+*              ENDIF.
+*            ENDLOOP.
+*            LOOP AT LT_GSNGZJL1.
+*              APPEND LT_GSNGZJL1 TO LT_GSNGZJL. CLEAR LT_GSNGZJL1.
+*            ENDLOOP.
+*
+*            CLEAR:LT_GSNGZJL1,LT_GSNGZJL1[].
+*
+            SORT LT_GSNGZJL BY  ENDDA DESCENDING BEGDA DESCENDING.
+            DO 12 TIMES.
+              READ TABLE LT_GSNGZJL INDEX SY-INDEX.
+              IF SY-SUBRC = 0.
+                IF LT_GSNGZJL-ENDDA = '99991231'.
+                  CONCATENATE LT_GSNGZJL-BEGDA+0(4) '.' LT_GSNGZJL-BEGDA+4(2) '.'LT_GSNGZJL-BEGDA+6(2)
+                  '～' '至今' INTO GSNGZJL-20H2L.
+                ELSE.
+                  CONCATENATE LT_GSNGZJL-BEGDA+0(4) '.' LT_GSNGZJL-BEGDA+4(2) '.'LT_GSNGZJL-BEGDA+6(2)
+                  '～' LT_GSNGZJL-ENDDA+0(4) '.' LT_GSNGZJL-ENDDA+4(2) '.'LT_GSNGZJL-ENDDA+6(2) INTO GSNGZJL-20H2L.
+                ENDIF.
+                GSNGZJL-20H4L = LT_GSNGZJL-ZGZDWN.
+                GSNGZJL-20H8L = LT_GSNGZJL-ZBMN.
+                GSNGZJL-20H13L = LT_GSNGZJL-ZZWN.
+                APPEND GSNGZJL.CLEAR GSNGZJL.
+              ENDIF.
+            ENDDO.
+***********************************公司内工作经历**********************
+
+
+***********************************公司外工作经历**********************
+            SELECT PERNR BEGDA  ENDDA ZGZDWMC ZBM ZZWMC
+                INTO CORRESPONDING FIELDS OF TABLE LT_PA9003
+                FROM PA9003 WHERE PERNR = PERNR_JL.
+            SORT LT_PA9003 BY BEGDA DESCENDING.
+            DO 8 TIMES.
+              READ TABLE LT_PA9003 INDEX SY-INDEX.
+              IF SY-SUBRC = 0.
+                IF LT_PA9003-ENDDA = '99991231'.
+                  CONCATENATE LT_PA9003-BEGDA+0(4) '.' LT_PA9003-BEGDA+4(2) '.'LT_PA9003-BEGDA+6(2)
+                   '～' '至今' INTO GSWGZJL-29H2L.
+                ELSE.
+                  CONCATENATE LT_PA9003-BEGDA+0(4) '.'LT_PA9003-BEGDA+4(2) '.'LT_PA9003-BEGDA+6(2)
+                  '～' LT_PA9003-ENDDA+0(4) '.'LT_PA9003-ENDDA+4(2) '.'LT_PA9003-ENDDA+6(2)  INTO GSWGZJL-29H2L.
+                ENDIF.
+                GSWGZJL-29H4L = LT_PA9003-ZGZDWMC.
+                GSWGZJL-29H8L = LT_PA9003-ZBM.
+                GSWGZJL-29H13L = LT_PA9003-ZZWMC.
+                APPEND GSWGZJL.CLEAR GSWGZJL.
+              ENDIF.
+            ENDDO.
+***********************************公司外工作经历**********************
+
+
+***********************************培训情况****************************
+            SELECT PERNR BEGDA ENDDA ZPXKC ZPXJG ZSHZS
+              INTO CORRESPONDING FIELDS OF TABLE LT_PA9500
+              FROM PA9500 WHERE PERNR = PERNR_JL.
+            SORT LT_PA9500 BY BEGDA DESCENDING.
+            DO 5 TIMES.
+              READ TABLE LT_PA9500 INDEX SY-INDEX.
+              IF SY-SUBRC = 0.
+                CONCATENATE LT_PA9500-BEGDA+0(4) '.'LT_PA9500-BEGDA+4(2) '.'LT_PA9500-BEGDA+6(2)
+                '～' LT_PA9500-ENDDA+0(4) '.'LT_PA9500-ENDDA+4(2) '.'LT_PA9500-ENDDA+6(2)  INTO PXQK-38H2L.
+                PXQK-38H4L = LT_PA9500-ZPXKC .
+                PXQK-38H8L = LT_PA9500-ZPXJG.
+                PXQK-38H13L = LT_PA9500-ZSHZS.
+                APPEND PXQK.CLEAR PXQK.
+              ENDIF.
+            ENDDO.
+***********************************培训情况**********************
+
+
+***********************************家庭成员**********************
+            SELECT PERNR ZJTCYGXWB FANAM GBDAT ZGZDW ZJTCYZW ZZZMMWB
+              INTO CORRESPONDING FIELDS OF TABLE LT_PA9031
+              FROM PA9031 WHERE PERNR = PERNR_JL.
+            DO 5 TIMES.
+              READ TABLE LT_PA9031 INDEX SY-INDEX.
+              IF SY-SUBRC = 0.
+                JTCY-44H2L = LT_PA9031-ZJTCYGXWB.
+                JTCY-44H4L = LT_PA9031-FANAM.
+                JTCY-44H6L = LT_PA9031-ZGZDW.
+                JTCY-44H11L = LT_PA9031-ZJTCYZW.
+                JTCY-44H13L = LT_PA9031-ZZZMMWB.
+                CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+                  EXPORTING
+                    I_DATE_FROM    = LT_PA9031-GBDAT
+*                   I_KEY_DAY_FROM =
+                    I_DATE_TO      = SY-DATUM
+*                   I_KEY_DAY_TO   =
+                    I_FLG_SEPARATE = 'X'
+                  IMPORTING
+*                   e_days         =
+                    E_MONTHS       = MONTHJL
+                    E_YEARS        = YEARJL.
+                L_YEARJL = YEARJL.CONDENSE L_YEARJL.
+                L_MONTHJL = MONTHJL.CONDENSE L_MONTHJL.
+*                CONCATENATE l_yearjl '.' l_monthjl INTO jtcy-44h15l.
+                JTCY-44H15L = YEARJL.
+*                jtcy-44h15l = lt_pa9031-gbdat.
+                APPEND JTCY.CLEAR JTCY.
+              ENDIF.
+            ENDDO.
+
+***********************************家庭成员**********************                          ZKS
+*            if e_ucomm = 'PRINT'.
+            SELECT  PERNR ZCJPXSJ ZJSPXSJ ZGBPYXMWB ZZBDW ZCXDW    "干部培养计划
+              INTO CORRESPONDING FIELDS OF TABLE GBPYJH
+              FROM PA9014 WHERE PERNR = PERNR_JL.
+
+            LOOP AT GBPYJH.
+              CONCATENATE GBPYJH-ZCJPXSJ '～' GBPYJH-ZJSPXSJ INTO GBPYJH-CJSJ .
+              MODIFY GBPYJH. CLEAR GBPYJH.
+            ENDLOOP.
+*            endif.
+
+            CONCATENATE '开始写入：' PERNR_JL '数据--->EXCEL文件......' INTO MSG.
+            CALL FUNCTION 'SAPGUI_PROGRESS_INDICATOR'
+              EXPORTING
+                PERCENTAGE = 0
+                TEXT       = MSG
+              EXCEPTIONS
+                OTHERS     = 1.
+
+            IF E_UCOMM = 'PRINTS' AND <CHECK_X> = 'X'.  "批量打印
+              I = I + 1.
+              C_ROW = ( I - 1 ) * 84.
+              IF C_ROW = 0.
+                C_ROW = 1.
+              ENDIF.
+              PERFORM CREATE_RESUME01 USING E_UCOMM C_ROW.
+            ELSE.
+              PERFORM CREATE_RESUME USING E_UCOMM.
+            ENDIF.
+
+            CLEAR:JBQK,JBQK[],JYXX,JYXX[],GSWGZJL,GSWGZJL[],PXQK,PXQK[],JTCY,JTCY[],
+                  LT_GSNGZJL,LT_GSNGZJL[],LT_GSNGZJL1,LT_GSNGZJL[].
+*          ELSEIF <check_x> <> 'X'.
+*            MESSAGE '请选择要生成简历的的数据' TYPE 'S' DISPLAY LIKE 'E'.EXIT .
+          ENDIF.
+
+        ENDLOOP.
+        "设置列宽
+        IF E_UCOMM = 'PRINTS'.
+          PERFORM SET_COLUMN_WIDTH.
+          PERFORM PREVIEW_XLS .
+          "过程可见 44
+        ENDIF.
+
+      WHEN OTHERS.
+    ENDCASE.
+  ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  EXCEL_OUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+  FORM EXCEL_OUT.
+    PERFORM FRM_CREATE_DOCUMENT CHANGING  L_DOC .
+    PERFORM FRM_CREATE_ROOT USING L_DOC CHANGING L_ROOT.
+    PERFORM FRM_CREATE_STYLES_TABLE TABLES WT_STYLES .
+    PERFORM FRM_CREATE_STYLES TABLES WT_STYLES USING L_DOC L_ROOT.
+
+    PERFORM FRM_CREATE_SHEET_STATIC2 TABLES WT_COLUMNS WT_CELLS .
+    PERFORM FRM_WRITE_SHEET TABLES WT_CELLS WT_COLUMNS USING '员工花名册'  L_DOC L_ROOT.
+*
+*  PERFORM FRM_CREATE_SHEET_STATIC3 TABLES WT_COLUMNS WT_CELLS .
+*  PERFORM FRM_WRITE_SHEET TABLES WT_CELLS WT_COLUMNS USING '奖金汇总表'  L_DOC L_ROOT.
+    PERFORM FRM_DOWN_XML USING L_DOC W_FNAME.
+  ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FRM_CREATE_DOCUMENT
+*----------------------------------------------------------------------*
+  FORM FRM_CREATE_DOCUMENT  CHANGING P_DOC TYPE REF TO IF_IXML_DOCUMENT.
+    L_IXML = CL_IXML=>CREATE( ).
+    P_DOC = L_IXML->CREATE_DOCUMENT( ).
+  ENDFORM.                    " FRM_CREATE_DOCUMENT
+*&---------------------------------------------------------------------*
+*&      Form  FRM_CREATE_ROOT
+*&---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+  FORM FRM_CREATE_ROOT  USING P_DOC TYPE REF TO IF_IXML_DOCUMENT CHANGING P_ELEM TYPE REF TO IF_IXML_ELEMENT.
+    DATA: IDX TYPE I.
+    P_ELEM = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Workbook'
+                                           PARENT = P_DOC ).
+
+    IDX = P_ELEM->SET_ATTRIBUTE( NAME = 'xmlns' VALUE = 'urn:schemas-microsoft-com:office:spreadsheet' ).
+    IDX = P_ELEM->SET_ATTRIBUTE( NAME = 'xmlns:o' VALUE = 'urn:schemas-microsoft-com:office:office' ).
+    IDX = P_ELEM->SET_ATTRIBUTE( NAME = 'xmlns:x' VALUE = 'urn:schemas-microsoft-com:office:excel' ).
+    IDX = P_ELEM->SET_ATTRIBUTE( NAME = 'xmlns:ss' VALUE = 'urn:schemas-microsoft-com:office:spreadsheet' ).
+    IDX = P_ELEM->SET_ATTRIBUTE( NAME = 'xmlns:html' VALUE = 'http://www.w3.org/TR/REC-html40' ).
+  ENDFORM.                    " FRM_CREATE_ROOT
+*&---------------------------------------------------------------------*
+*&      Form  FRM_CREATE_STYLES_TABLE
+*&---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+  FORM FRM_CREATE_STYLES_TABLE  TABLES   PT_STYLES TYPE TY_T_STYLES.
+    DATA: WA_STYLE TYPE TY_STYLE.
+
+    REFRESH PT_STYLES.
+    WA_STYLE-SSID = 'S01'.
+    WA_STYLE-ALIGNMENT_HOR = 'Center'.
+    WA_STYLE-ALIGNMENT_VER = 'Center'.
+    WA_STYLE-BORDER = 0."边框
+    WA_STYLE-FONT_NAME = '宋体'.
+    WA_STYLE-FONT_SIZE = 16.
+    WA_STYLE-FONT_CHARSET = 134.
+    WA_STYLE-NUMBER_FORMAT = ''.
+    WA_STYLE-WRAP_TEXT = 0.
+    WA_STYLE-BOLD = 1."粗体
+    APPEND WA_STYLE TO PT_STYLES.
+
+    WA_STYLE-SSID = 'S02'.
+    WA_STYLE-ALIGNMENT_HOR = 'Center'.
+    WA_STYLE-ALIGNMENT_VER = 'Center'.
+    WA_STYLE-BORDER = 1.
+    WA_STYLE-FONT_NAME = '宋体'.
+    WA_STYLE-FONT_SIZE = 12.
+    WA_STYLE-FONT_CHARSET = 134.
+    WA_STYLE-NUMBER_FORMAT = ''.
+    WA_STYLE-WRAP_TEXT = 1.
+    WA_STYLE-BOLD = 1.
+    APPEND WA_STYLE TO PT_STYLES.
+
+    WA_STYLE-SSID = 'S03'.
+    WA_STYLE-ALIGNMENT_HOR = 'Center'.
+    WA_STYLE-ALIGNMENT_VER = 'Center'.
+    WA_STYLE-BORDER = 0.
+    WA_STYLE-FONT_NAME = '宋体'.
+    WA_STYLE-FONT_SIZE = 10.
+    WA_STYLE-FONT_CHARSET = 134.
+    WA_STYLE-NUMBER_FORMAT = ''.
+    WA_STYLE-WRAP_TEXT = 1."自动换行
+    WA_STYLE-BOLD = 0.
+    APPEND WA_STYLE TO PT_STYLES.
+
+    WA_STYLE-SSID = 'S04'.
+*    wa_style-alignment_hor = 'Center'.
+*    wa_style-alignment_ver = 'Center'.
+    WA_STYLE-BORDER = 1.
+    WA_STYLE-FONT_NAME = '宋体'.
+    WA_STYLE-FONT_SIZE = 10.
+    WA_STYLE-FONT_CHARSET = 134.
+    WA_STYLE-NUMBER_FORMAT = ''.
+    WA_STYLE-WRAP_TEXT = 1.
+    WA_STYLE-BOLD = 0.
+    APPEND WA_STYLE TO PT_STYLES.
+  ENDFORM.                    " FRM_CREATE_STYLES_TABLE
+*&---------------------------------------------------------------------*
+*&      Form  FRM_CREATE_STYLES
+*&---------------------------------------------------------------------*
+**----------------------------------------------------------------------*
+  FORM FRM_CREATE_STYLES  TABLES   PT_STYLES TYPE TY_T_STYLES
+                         USING P_DOC TYPE REF TO IF_IXML_DOCUMENT
+                               P_PARENT TYPE REF TO IF_IXML_ELEMENT.
+    DATA: WA_STYLE    TYPE TY_STYLE,
+          IDX         TYPE I,
+          L_STYLES    TYPE REF TO IF_IXML_ELEMENT,
+          L_BORDERS   TYPE REF TO IF_IXML_ELEMENT,
+          L_BORDER    TYPE REF TO IF_IXML_ELEMENT,
+          L_ALIGN     TYPE REF TO IF_IXML_ELEMENT,
+          L_FONT      TYPE REF TO IF_IXML_ELEMENT,
+          L_NUMFORMAT TYPE REF TO IF_IXML_ELEMENT,
+          L_STYLE     TYPE REF TO IF_IXML_ELEMENT.
+
+    L_STYLES = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Styles' PARENT = P_PARENT ).
+
+    LOOP AT PT_STYLES INTO WA_STYLE.
+      CONDENSE: WA_STYLE-SSID,
+                          WA_STYLE-ALIGNMENT_HOR,
+                          WA_STYLE-ALIGNMENT_VER,
+                          WA_STYLE-WRAP_TEXT,
+                          WA_STYLE-FONT_CHARSET,
+                          WA_STYLE-FONT_SIZE,
+                          WA_STYLE-FONT_NAME,
+                          WA_STYLE-NUMBER_FORMAT,
+                          WA_STYLE-BOLD.
+
+      L_STYLE = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Style' PARENT = L_STYLES ).
+      IDX = L_STYLE->SET_ATTRIBUTE( NAME = 'ss:ID' VALUE = WA_STYLE-SSID ).
+
+
+      L_ALIGN = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Alignment' PARENT = L_STYLE ).
+      IDX = L_ALIGN->SET_ATTRIBUTE( NAME = 'ss:Vertical' VALUE = WA_STYLE-ALIGNMENT_VER ).
+      IDX = L_ALIGN->SET_ATTRIBUTE( NAME = 'ss:Horizontal' VALUE = WA_STYLE-ALIGNMENT_HOR ).
+      IDX = L_ALIGN->SET_ATTRIBUTE( NAME = 'ss:WrapText' VALUE = WA_STYLE-WRAP_TEXT ).
+
+      CASE WA_STYLE-BORDER.
+        WHEN 1.
+          L_BORDERS = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Borders' PARENT = L_STYLE ).
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Bottom' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Left' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Right' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Top' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+
+        WHEN 2.
+          L_BORDERS = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Borders' PARENT = L_STYLE ).
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Bottom' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Left' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Right' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'Top' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+
+          L_BORDER = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Border' PARENT = L_BORDERS ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Position' VALUE = 'DiagonalLeft' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:LineStyle' VALUE = 'Continuous' ).
+          IDX = L_BORDER->SET_ATTRIBUTE( NAME = 'ss:Weight' VALUE = '1' ).
+        WHEN OTHERS.
+      ENDCASE.
+
+      L_FONT = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Font' PARENT = L_STYLE ).
+      IDX = L_FONT->SET_ATTRIBUTE( NAME = 'ss:FontName' VALUE = WA_STYLE-FONT_NAME ).
+      IDX = L_FONT->SET_ATTRIBUTE( NAME = 'x:CharSet' VALUE = WA_STYLE-FONT_CHARSET ).
+      IDX = L_FONT->SET_ATTRIBUTE( NAME = 'ss:Bold' VALUE = WA_STYLE-BOLD ).
+      IDX = L_FONT->SET_ATTRIBUTE( NAME = 'ss:Size' VALUE = WA_STYLE-FONT_SIZE ).
+    ENDLOOP.
+  ENDFORM.                    " FRM_CREATE_STYLES
+*&---------------------------------------------------------------------*
+*&      FORM  FRM_CREATE_SHEET_STATIC2
+*&---------------------------------------------------------------------*
+*
+*----------------------------------------------------------------------*
+  FORM FRM_CREATE_SHEET_STATIC2  TABLES PT_COLUMNS TYPE TY_T_COLUMNS
+                               PT_CELLS TYPE TY_T_CELLS.
+    DATA MYSFGZ TYPE STRING.
+    DATA MYJJZE TYPE STRING.
+    DATA L_FLAG TYPE C.
+    CLEAR L_FLAG.
+    REFRESH: PT_COLUMNS,PT2_COLUMNS.
+    REFRESH: PT_CELLS,PT2_CELLS.
+    DATA:LS_FIELDCAT TYPE LVC_S_FCAT.
+
+    DATA:WERKS_TXT(10),G_HEADER TYPE STRING,YEAR(4),NUM TYPE STRING,TEXT TYPE STRING,LINE TYPE I.
+
+    LOOP AT GT_FIELDCAT1 INTO LS_FIELDCAT WHERE (  NO_OUT = '' ) AND FIELDNAME <> 'CHECKBOX'.
+      NUM = NUM + 1.
+    ENDLOOP.
+    DO NUM TIMES.
+      IF SY-INDEX = 5.
+        PERFORM SET_WIDTH USING '110' '0' '0'.
+      ELSE.
+        PERFORM SET_WIDTH USING '90' '0' '0'.
+      ENDIF.
+    ENDDO.
+    NUM = NUM - 1.
+    CONDENSE NUM .
+
+
+    "参数1：行数，2：列数，3：行高，5：合并多少单元格
+    CLEAR LI_ROW."
+    LI_ROW = 1.
+    PERFORM SET_CELL USING LI_ROW '1' '28' '0' '2' '0' '北京顺鑫控股集团有限公司' 'S01' '0'.
+    LI_ROW = LI_ROW + 1.
+    PERFORM SET_CELL USING LI_ROW '1' '28' '0' NUM '0' '员工花名册' 'S01' '0'.
+    LI_ROW = LI_ROW + 1.
+    PERFORM SET_CELL USING LI_ROW '1' '14' '0' '0' '0' '组织名称：' 'S03' '0'.
+    PERFORM SET_CELL USING LI_ROW '2' '14' '0' '0' '0' DANWEIMC 'S03' '0'.
+    LINE = NUM + 1. CONCATENATE SY-DATUM+0(4) '年' SY-DATUM+4(2) '月' SY-DATUM+6(2) '日' INTO G_HEADER.
+    PERFORM SET_CELL USING LI_ROW LINE '14' '0' '0' '0' G_HEADER 'S03' '0'.
+
+    LI_ROW = LI_ROW + 1.CLEAR LINE.
+    LOOP AT GT_FIELDCAT1 INTO LS_FIELDCAT WHERE NO_OUT <> 'X' AND FIELDNAME <> 'CHECKBOX'.
+      TEXT = LS_FIELDCAT-SCRTEXT_L.CONDENSE TEXT. LINE = LINE + 1.
+      PERFORM SET_CELL USING LI_ROW LINE '30' '0' '0' '0' TEXT 'S02' '0'.
+    ENDLOOP.
+
+    DATA:WA_NEW_LINE TYPE REF TO DATA.
+    CREATE DATA WA_NEW_LINE LIKE LINE OF <DYN_TABLE>.  " 建立一个与动态内表结构相同的数据对象，且数据对象为是一个结构
+    ASSIGN WA_NEW_LINE->* TO <DYN_WA>." 用<dyn_wa>指针指向该结构
+    FIELD-SYMBOLS:<FIELD> TYPE  ANY .
+
+    LOOP AT <DYN_TABLE> INTO <DYN_WA> .
+      CLEAR LI_CELL.
+      LI_ROW = LI_ROW + 1.
+
+      LI_CELL = LI_CELL + 1.     "序号
+      ASSIGN COMPONENT 2 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      LC_TRANS = <FIELD>.
+      PERFORM SET_CELL USING LI_ROW LI_CELL '16' '0' '0' '0' LC_TRANS 'S04' '0'.
+      LI_CELL = LI_CELL + 1.     "姓名
+      ASSIGN COMPONENT 3 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      LC_TRANS = <FIELD>.
+      PERFORM SET_CELL USING LI_ROW LI_CELL '16' '0' '0' '0' LC_TRANS 'S04' '0'.
+      LI_CELL = LI_CELL + 1.     "员工编号
+      ASSIGN COMPONENT 4 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      LC_TRANS = <FIELD>.
+      PERFORM SET_CELL USING LI_ROW LI_CELL '16' '0' '0' '0' LC_TRANS 'S04' '0'.
+
+
+*      li_cell = li_cell + 1.     "部门
+*      ASSIGN COMPONENT 5 OF STRUCTURE <dyn_wa> TO <field>.
+*      lc_trans = <field>.
+*      PERFORM set_cell USING li_row li_cell '16' '0' '0' '0' lc_trans 'S04' '0'.
+*      li_cell = li_cell + 1.     "部门
+*      ASSIGN COMPONENT 6 OF STRUCTURE <dyn_wa> TO <field>.
+*      lc_trans = <field>.
+*      PERFORM set_cell USING li_row li_cell '16' '0' '0' '0' lc_trans 'S04' '0'.
+*      li_cell = li_cell + 1.     "部门
+*      ASSIGN COMPONENT 7 OF STRUCTURE <dyn_wa> TO <field>.
+*      lc_trans = <field>.
+*      PERFORM set_cell USING li_row li_cell '16' '0' '0' '0' lc_trans 'S04' '0'.
+*      li_cell = li_cell + 1.     "部门
+*      ASSIGN COMPONENT 8 OF STRUCTURE <dyn_wa> TO <field>.
+*      lc_trans = <field>.
+*      PERFORM set_cell USING li_row li_cell '16' '0' '0' '0' lc_trans 'S04' '0'.
+
+      LOOP AT GT_FIELDCAT1 INTO LS_FIELDCAT WHERE NO_OUT <> 'X'
+        AND ( FIELDNAME+0(4) = 'ZNUM' OR FIELDNAME+0(3) = 'ORG').
+        LI_CELL = LI_CELL + 1.
+        ASSIGN COMPONENT LS_FIELDCAT-FIELDNAME OF STRUCTURE <DYN_WA> TO <FIELD>.CONDENSE <FIELD>.
+        LC_TRANS = <FIELD>.
+        PERFORM SET_CELL USING LI_ROW LI_CELL '16' '0' '0' '0' LC_TRANS 'S04' '0'.
+      ENDLOOP.
+
+    ENDLOOP.
+
+    PT_COLUMNS[] = PT2_COLUMNS[].
+    PT_CELLS[] = PT2_CELLS[].
+    CLEAR:LI_ROW,LI_CELL.
+  ENDFORM.                    " FRM_CREATE_SHEET_STATIC2
+*&---------------------------------------------------------------------*
+*&      Form  FRM_WRITE_SHEET
+*&---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+  FORM FRM_WRITE_SHEET  TABLES PT_CELLS TYPE TY_T_CELLS
+                             PT_COLUMN TYPE TY_T_COLUMNS
+                       USING P_SHEETNAME
+                             P_DOC TYPE REF TO IF_IXML_DOCUMENT
+                             P_PARENT TYPE REF TO IF_IXML_ELEMENT.
+
+    DATA: WA_CELL     TYPE TY_CELL,
+          WA_CELL_TMP TYPE TY_CELL,
+          WA_COLUMN   TYPE TY_COLUMN.
+    DATA: L_SHEET            TYPE REF TO IF_IXML_ELEMENT,
+          L_TABLE            TYPE REF TO IF_IXML_ELEMENT,
+          L_COLUMN           TYPE REF TO IF_IXML_ELEMENT,
+          L_CELL             TYPE REF TO IF_IXML_ELEMENT,
+          L_DATA             TYPE REF TO IF_IXML_ELEMENT,
+          L_WORKSHEETOPTIONS TYPE REF TO IF_IXML_ELEMENT,
+          L_NOGRID           TYPE REF TO IF_IXML_ELEMENT,
+          L_ROW              TYPE REF TO IF_IXML_ELEMENT.
+    DATA: IDX TYPE I.
+    DATA: WS_LINE TYPE STRING,
+          WS_CELL TYPE STRING.
+
+    L_SHEET = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Worksheet' PARENT = P_PARENT ).
+    IDX = L_SHEET->SET_ATTRIBUTE( NAME = 'ss:Name' VALUE = P_SHEETNAME ).
+
+    L_WORKSHEETOPTIONS = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'WorksheetOptions' PARENT = L_SHEET ).
+    IDX = L_WORKSHEETOPTIONS->SET_ATTRIBUTE( NAME = 'xmlns' VALUE = 'urn:schemas-microsoft-com:office:excel' ).
+
+    L_NOGRID = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'DisplayGridlines' PARENT = L_WORKSHEETOPTIONS ).
+
+    L_TABLE = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Table' PARENT = L_SHEET ).
+
+    LOOP AT PT_COLUMN INTO WA_COLUMN.
+
+      CONDENSE: WA_COLUMN-AFWIDTH,
+                          WA_COLUMN-WIDTH,
+                          WA_COLUMN-SPAN NO-GAPS.
+
+      L_COLUMN = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Column' PARENT = L_TABLE ).
+
+      IDX = L_COLUMN->SET_ATTRIBUTE( NAME = 'ss:AutoFitWidth' VALUE = WA_COLUMN-AFWIDTH ).
+
+      IDX = L_COLUMN->SET_ATTRIBUTE( NAME = 'ss:Width' VALUE = WA_COLUMN-WIDTH ).
+
+      IF WA_COLUMN-SPAN NE 0.
+        IDX = L_COLUMN->SET_ATTRIBUTE( NAME = 'ss:Span' VALUE = WA_COLUMN-SPAN ).
+      ENDIF.
+
+    ENDLOOP.
+
+    SORT PT_CELLS BY LINE CELL.
+
+    LOOP AT PT_CELLS INTO WA_CELL.
+      CONDENSE: WA_CELL-LINE_HEIGHT,
+                          WA_CELL-LINE_AFH,
+                          WA_CELL-STYLE_ID,
+                          WA_CELL-MERGEACROSS,
+                          WA_CELL-MERGEDOWN NO-GAPS.
+
+      MOVE-CORRESPONDING WA_CELL TO  WA_CELL_TMP.
+      WS_LINE = WA_CELL_TMP-LINE.
+      WS_CELL = WA_CELL_TMP-CELL.
+      CONDENSE WS_LINE NO-GAPS.
+      CONDENSE WS_CELL NO-GAPS.
+      AT NEW LINE.
+        L_ROW = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Row' PARENT = L_TABLE ).
+        IDX = L_ROW->SET_ATTRIBUTE( NAME = 'ss:AutoFitHeight' VALUE = WA_CELL_TMP-LINE_AFH ).
+        IDX = L_ROW->SET_ATTRIBUTE( NAME = 'ss:Height' VALUE = WA_CELL_TMP-LINE_HEIGHT ).
+        IDX = L_ROW->SET_ATTRIBUTE( NAME = 'ss:Index' VALUE = WS_LINE ).
+      ENDAT.
+
+      L_CELL = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Cell' PARENT = L_ROW ).
+      IDX = L_CELL->SET_ATTRIBUTE( NAME = 'ss:StyleID' VALUE = WA_CELL-STYLE_ID ).
+      IDX = L_CELL->SET_ATTRIBUTE( NAME = 'ss:Index' VALUE = WS_CELL ).
+      IF WA_CELL-MERGEACROSS NE 0.
+        IDX = L_CELL->SET_ATTRIBUTE( NAME = 'ss:MergeAcross' VALUE = WA_CELL-MERGEACROSS ).
+      ENDIF.
+
+      IF WA_CELL-MERGEDOWN NE 0.
+        IDX = L_CELL->SET_ATTRIBUTE( NAME = 'ss:MergeDown' VALUE = WA_CELL-MERGEDOWN ).
+      ENDIF.
+
+      IF WA_CELL-VALUE IS NOT INITIAL.
+        L_DATA = P_DOC->CREATE_SIMPLE_ELEMENT( NAME = 'Data'  VALUE = WA_CELL-VALUE  PARENT = L_CELL ).
+*      IDX = L_DATA->SET_ATTRIBUTE( NAME = 'ss:Type' VALUE = 'String' ).
+        CASE WA_CELL-D_TYPE.
+          WHEN 0.
+            IDX = L_DATA->SET_ATTRIBUTE( NAME = 'ss:Type' VALUE = 'String' ).
+          WHEN 1.
+            IDX = L_DATA->SET_ATTRIBUTE( NAME = 'ss:Type' VALUE = 'Number' ).
+          WHEN 2.
+            IDX = L_DATA->SET_ATTRIBUTE( NAME = 'ss:Type' VALUE = 'DateTime' ).
+          WHEN OTHERS.
+        ENDCASE.
+      ENDIF.
+    ENDLOOP.
+  ENDFORM.                    " FRM_WRITE_SHEET
+*&---------------------------------------------------------------------*
+*&      Form  FRM_DOWN_XML
+*&---------------------------------------------------------------------*
+  FORM FRM_DOWN_XML  USING   P_DOC TYPE REF TO IF_IXML_DOCUMENT
+                     P_FILENAME TYPE RLGRAP-FILENAME.
+    TYPES: BEGIN OF XML_LINE,
+             DATA(256) TYPE X,
+           END OF XML_LINE.
+
+    DATA: XML_TABLE TYPE STANDARD TABLE OF XML_LINE.
+    DATA:  L_OSTREAM        TYPE REF TO IF_IXML_OSTREAM,
+           L_PSTREAMFACTORY TYPE REF TO IF_IXML_STREAM_FACTORY.
+    DATA: XML_SIZE TYPE I.
+
+    L_PSTREAMFACTORY = L_IXML->CREATE_STREAM_FACTORY( ).
+
+    L_OSTREAM = L_PSTREAMFACTORY->CREATE_OSTREAM_ITABLE( XML_TABLE ).
+
+    REFRESH XML_TABLE.
+    CALL METHOD P_DOC->RENDER( OSTREAM = L_OSTREAM RECURSIVE = 'X' ).
+
+    XML_SIZE = L_OSTREAM->GET_NUM_WRITTEN_RAW( ).
+
+    CONCATENATE CS_PATH CO_OBJID '-' SY-DATUM SY-UZEIT '.XLS' INTO P_FILENAME.
+    CONDENSE P_FILENAME NO-GAPS.
+    CALL FUNCTION 'WS_DOWNLOAD'
+      EXPORTING
+        BIN_FILESIZE = XML_SIZE
+        FILENAME     = P_FILENAME
+        FILETYPE     = 'BIN'
+      TABLES
+        DATA_TAB     = XML_TABLE.
+
+    DATA P_FILENAME2 TYPE STRING.
+    P_FILENAME2 = P_FILENAME.
+    CALL METHOD CL_GUI_FRONTEND_SERVICES=>EXECUTE
+      EXPORTING
+        DOCUMENT = P_FILENAME2.
+******************************选择文件路径******************************
+*    DATA:path TYPE string.
+*    CALL METHOD cl_gui_frontend_services=>directory_browse
+*      CHANGING
+*        selected_folder = path.
+*    IF sy-subrc <> 0.
+*      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+*                 WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+*    ENDIF.
+*
+*    IF path IS NOT INITIAL.
+*      CONCATENATE path '\' co_objid '-' sy-datum  '.XLS' INTO p_filename.  "SY-UZEIT
+*      CONDENSE p_filename NO-GAPS.
+*
+*      CALL FUNCTION 'WS_DOWNLOAD'
+*        EXPORTING
+*          bin_filesize            = xml_size
+*          filename                = p_filename
+*          filetype                = 'BIN'
+*        TABLES
+*          data_tab                = xml_table
+*        EXCEPTIONS
+*          file_open_error         = 1
+*          file_write_error        = 2
+*          invalid_filesize        = 3
+*          invalid_type            = 4
+*          no_batch                = 5
+*          unknown_error           = 6
+*          invalid_table_width     = 7
+*          gui_refuse_filetransfer = 8
+*          customer_error          = 9
+*          no_authority            = 10
+*          OTHERS                  = 11.
+*      IF sy-subrc <> 0.
+*      ENDIF.
+*      DATA p_filename2 TYPE string.
+*      p_filename2 = p_filename.
+*      CALL METHOD cl_gui_frontend_services=>execute
+*        EXPORTING
+*          document = p_filename2.
+*    ELSE.
+*      MESSAGE '请选择保存路径' TYPE 'E'.
+*    ENDIF.
+******************************选择文件路径******************************
+  ENDFORM.                    " FRM_DOWN_XML
+*&---------------------------------------------------------------------*
+*&      Form  SET_CELL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LI_ROW  text
+*      -->P_0975   text
+*      -->P_0976   text
+*      -->P_0977   text
+*      -->P_0978   text
+*      -->P_0979   text
+*      -->P_G_HEADER  text
+*      -->P_0981   text
+*      -->P_0982   text
+*----------------------------------------------------------------------*
+  FORM SET_CELL  USING   X_LINE TYPE I
+                          X_CELL TYPE I
+                          X_LINE_HEIGHT TYPE STRING
+                          X_LINE_AFH TYPE STRING
+                          X_MERGEACROSS TYPE STRING
+                          X_MERGEDOWN TYPE STRING
+                          X_VALUE TYPE STRING
+                          X_STYLE_ID TYPE STRING
+                          X_D_TYPE TYPE I.
+    DATA WA_CELL TYPE TY_CELL.
+
+    WA_CELL-LINE = X_LINE.     "第几行
+    WA_CELL-CELL = X_CELL.
+    WA_CELL-LINE_HEIGHT = X_LINE_HEIGHT.
+    WA_CELL-LINE_AFH = X_LINE_AFH.
+    WA_CELL-MERGEACROSS = X_MERGEACROSS.    "合并多少单元格
+    WA_CELL-MERGEDOWN = X_MERGEDOWN.
+    WA_CELL-VALUE = X_VALUE.
+    WA_CELL-STYLE_ID = X_STYLE_ID.
+    WA_CELL-D_TYPE = X_D_TYPE.
+    APPEND WA_CELL TO PT2_CELLS.
+  ENDFORM.                    " SET_CELL
+*&---------------------------------------------------------------------*
+*&      Form  SET_WIDTH
+*&---------------------------------------------------------------------*
+**----------------------------------------------------------------------*
+  FORM SET_WIDTH  USING X_WIDTH TYPE STRING
+                         X_SPAN TYPE STRING
+                         X_AFWIDTH TYPE STRING.
+    DATA WA_COLUMN TYPE TY_COLUMN.
+    WA_COLUMN-WIDTH = X_WIDTH.
+    WA_COLUMN-SPAN = X_SPAN.
+    WA_COLUMN-AFWIDTH = X_AFWIDTH.
+    APPEND WA_COLUMN TO PT2_COLUMNS.
+  ENDFORM.                    " SET_WIDTH
+*&---------------------------------------------------------------------*
+*&      Form  GSNJL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_PERNR_JL  text
+*----------------------------------------------------------------------*
+  FORM GSNJL  USING    PERNR_JL.
+
+    DATA: WA_HRP1001 TYPE HRP1001,
+          SOBID      TYPE HRP1001-SOBID,  "主岗单位
+          SOBID1     TYPE HRP1001-SOBID,  "主岗单位
+          ZGZDWN(60) TYPE C,
+          OBJID      TYPE HROBJID.
+    DATA: LS_GSNGZJL LIKE LT_GSNGZJL OCCURS 0 WITH HEADER LINE.
+    REFRESH: LT_GSNGZJL, LS_GSNGZJL.
+    CLEAR  : LT_GSNGZJL, LS_GSNGZJL.
+    SELECT  * INTO WA_HRP1001 FROM HRP1001 WHERE  OBJID = PERNR_JL AND OTYPE = 'P' AND SCLAS = 'S' .
+*              IF WA_HRP1001-PROZT = 100.
+*                SOBID = WA_HRP1001-SOBID.
+*              ENDIF.
+      LS_GSNGZJL-PERNR = WA_HRP1001-OBJID.
+      LS_GSNGZJL-BEGDA = WA_HRP1001-BEGDA.
+      LS_GSNGZJL-ENDDA = WA_HRP1001-ENDDA.
+      LS_GSNGZJL-WERKS = WA_HRP1001-SOBID.
+      "LS_GSNGZJL-ORGEH = WA_HRP1001-PROZT.    "100% 为主岗
+      LS_GSNGZJL-PROZT = WA_HRP1001-PROZT.
+      LS_GSNGZJL-PLANS = WA_HRP1001-SOBID.
+      APPEND LS_GSNGZJL.
+      CLEAR: LS_GSNGZJL.
+    ENDSELECT.
+    LT_GSNGZJL[] = LS_GSNGZJL[].
+
+*    DELETE LT_GSNGZJL WHERE BEGDA < '20150101' .
+
+
+    SORT LT_GSNGZJL BY BEGDA ENDDA PLANS.
+    DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL COMPARING BEGDA ENDDA PLANS.
+    SORT LT_GSNGZJL BY ENDDA DESCENDING.
+*            "取主岗最小单位
+*            CLEAR: WA_HRP1001.
+*            SELECT SINGLE * INTO WA_HRP1001 FROM HRP1001 WHERE OBJID = SOBID AND OTYPE = 'O' AND SCLAS = 'O'.
+*            "最小单位描述
+*            SELECT SINGLE STEXT INTO zgzdwn FROM HRP1000 WHERE OTYPE = 'O' AND OBJID = WA_HRP1001-SOBID.
+*
+    LOOP AT LT_GSNGZJL.
+      IF LT_GSNGZJL-PROZT = '100'.
+        IF SY-TABIX = 1.
+          "工作单位
+          READ TABLE GT_MIAN_DATA WITH KEY PERNR = LT_GSNGZJL-PERNR.
+          IF SY-SUBRC = 0.
+            IF GT_MIAN_DATA-ORG4 NE  ''.
+              LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG4.
+            ELSE.
+              IF GT_MIAN_DATA-ORG3 NE  ''.
+                LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG3.
+              ELSE.
+                IF GT_MIAN_DATA-ORG2 NE  ''.
+                  LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG2.
+                ELSE.
+                  IF GT_MIAN_DATA-ORG1 NE  ''.
+                    LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG1.
+                  ELSE.
+                    LT_GSNGZJL-ZBMN = GT_MIAN_DATA-ORG.
+                  ENDIF.
+                ENDIF.
+              ENDIF.
+            ENDIF.
+          ENDIF.
+        ELSE.
+          "取部门名称
+          CLEAR:SOBID.
+          SELECT SINGLE SOBID INTO SOBID FROM HRP1001 WHERE OTYPE = 'S' AND OBJID = LT_GSNGZJL-PLANS AND SCLAS = 'O' AND PLVAR = '01'.
+          SELECT SINGLE STEXT INTO LT_GSNGZJL-ZBMN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = SOBID AND ENDDA = '99991231'.
+        ENDIF.
+*                "取相同职务的最早开始日期
+*                SORT LS_GSNGZJL BY PLANS BEGDA.
+*                READ TABLE LS_GSNGZJL WITH KEY PLANS = LT_GSNGZJL-PLANS.
+*                IF SY-SUBRC = 0.
+*                  LT_GSNGZJL-BEGDA =  LS_GSNGZJL-BEGDA.
+*                ENDIF.
+*                "取相同职务的最晚开始日期
+*                SORT LS_GSNGZJL BY PLANS ENDDA DESCENDING.
+*                READ TABLE LS_GSNGZJL WITH KEY PLANS = LT_GSNGZJL-PLANS.
+*                IF SY-SUBRC = 0.
+*                  LT_GSNGZJL-ENDDA =  LS_GSNGZJL-ENDDA.
+*                ENDIF.
+        "取部门名称
+        SELECT SINGLE WERKS INTO LT_GSNGZJL-WERKS
+               FROM PA0001
+               WHERE PERNR = LT_GSNGZJL-PERNR AND BEGDA <= LT_GSNGZJL-ENDDA AND ENDDA  >=  LT_GSNGZJL-BEGDA.
+        SELECT SINGLE NAME1 INTO LT_GSNGZJL-ZGZDWN  FROM T500P WHERE PERSA = LT_GSNGZJL-WERKS.
+        "取岗位名称
+        LOOP AT LS_GSNGZJL WHERE BEGDA = LT_GSNGZJL-BEGDA AND ENDDA = LT_GSNGZJL-ENDDA.
+          SELECT SINGLE   PLSTX INTO LS_GSNGZJL-ZZWN FROM T528T WHERE PLANS = LS_GSNGZJL-PLANS AND SPRSL = '1' AND OTYPE = 'S'.
+          IF LS_GSNGZJL-ZZWN CO LT_GSNGZJL-ZZWN.
+          ELSE.
+            CONCATENATE LT_GSNGZJL-ZZWN ',' LS_GSNGZJL-ZZWN INTO LT_GSNGZJL-ZZWN.
+          ENDIF.
+        ENDLOOP.
+        SHIFT LT_GSNGZJL-ZZWN LEFT DELETING LEADING ','.
+        MODIFY  LT_GSNGZJL. CLEAR LT_GSNGZJL.
+      ELSE.
+        "取部门名称
+        CLEAR:SOBID.
+        SELECT SINGLE SOBID INTO SOBID FROM HRP1001 WHERE OTYPE = 'S' AND OBJID = LT_GSNGZJL-PLANS AND SCLAS = 'O' AND PLVAR = '01'.
+        SELECT SINGLE STEXT INTO LT_GSNGZJL-ZGZDWN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = SOBID AND ENDDA = '99991231'.
+        "工作单位
+        CLEAR:OBJID,SOBID1.
+        SELECT SINGLE SOBID INTO SOBID1 FROM HRP1001 WHERE OTYPE = 'O' AND OBJID = SOBID AND SCLAS = 'O' AND PLVAR = '01' AND RSIGN = 'A'.
+        OBJID = SOBID1.
+        SELECT SINGLE STEXT INTO LT_GSNGZJL-ZBMN FROM HRP1000 WHERE PLVAR = '01' AND OTYPE = 'O' AND OBJID = OBJID AND ENDDA = '99991231'.
+        "取岗位名称
+        LOOP AT LS_GSNGZJL WHERE BEGDA = LT_GSNGZJL-BEGDA AND ENDDA = LT_GSNGZJL-ENDDA.
+          SELECT SINGLE  PLSTX INTO LS_GSNGZJL-ZZWN FROM T528T WHERE PLANS = LS_GSNGZJL-PLANS AND SPRSL = '1' AND OTYPE = 'S'.
+          IF LS_GSNGZJL-ZZWN CO LT_GSNGZJL-ZZWN.
+          ELSE.
+            CONCATENATE LT_GSNGZJL-ZZWN ',' LS_GSNGZJL-ZZWN INTO LT_GSNGZJL-ZZWN.
+          ENDIF.
+        ENDLOOP.
+        SHIFT LT_GSNGZJL-ZZWN LEFT DELETING LEADING ','.
+        MODIFY  LT_GSNGZJL.CLEAR LT_GSNGZJL.
+      ENDIF.
+    ENDLOOP.
+    REFRESH LS_GSNGZJL.
+
+    DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL COMPARING ALL FIELDS.
+    DELETE LT_GSNGZJL WHERE ENDDA < '20150101'.
+    SORT LT_GSNGZJL BY BEGDA.
+
+    READ TABLE JBQK WITH KEY PERNR = PERNR_JL."20150101 以前入职的看pa9004。
+    IF SY-SUBRC = 0.
+      IF JBQK-8H6L < '20150101'.
+        SELECT PERNR BEGDA ENDDA  ZGZDWN  ZBMN  ZZWN
+              INTO CORRESPONDING FIELDS OF TABLE LT_GSNGZJL1 FROM PA9004
+              WHERE PERNR = PERNR_JL AND BEGDA < '20150101'.
+        SORT LT_GSNGZJL1 BY BEGDA DESCENDING.
+
+        DELETE ADJACENT DUPLICATES FROM LT_GSNGZJL1 COMPARING ALL FIELDS.
+
+        LOOP AT LT_GSNGZJL WHERE PROZT = '100' AND BEGDA < '20150101'.
+*          IF SY-TABIX = 1.
+          READ TABLE LT_GSNGZJL1 INDEX 1.
+          IF SY-SUBRC = 0.
+            IF LT_GSNGZJL-ENDDA BETWEEN LT_GSNGZJL1-BEGDA AND LT_GSNGZJL1-ENDDA.
+*              RIQI_JL = LT_GSNGZJL1-ENDDA.
+*              RIQI_JL = RIQI_JL + 1.
+              LT_GSNGZJL-BEGDA = LT_GSNGZJL1-BEGDA.
+              MODIFY LT_GSNGZJL. CLEAR LT_GSNGZJL.
+              LOOP AT LT_GSNGZJL1.
+                DELETE LT_GSNGZJL1.
+                EXIT.
+              ENDLOOP.
+
+            ELSEIF LT_GSNGZJL-ENDDA > LT_GSNGZJL1-ENDDA.
+              RIQI_JL = LT_GSNGZJL1-ENDDA.
+              RIQI_JL = RIQI_JL + 1.
+              LT_GSNGZJL-BEGDA = RIQI_JL.
+              MODIFY LT_GSNGZJL. CLEAR LT_GSNGZJL.
+            ELSEIF LT_GSNGZJL-ENDDA <  LT_GSNGZJL1-BEGDA.
+
+            ENDIF.
+*            ENDIF.
+          ENDIF.
+        ENDLOOP.
+        LOOP AT LT_GSNGZJL1.
+*          IF SY-TABIX = 1.
+*            CONTINUE.
+*          ENDIF.
+          APPEND LT_GSNGZJL1 TO LT_GSNGZJL. CLEAR LT_GSNGZJL1.
+        ENDLOOP.
+
+        CLEAR:LT_GSNGZJL1,LT_GSNGZJL1[].
+
+
+      ENDIF.
+
+    ENDIF.
+
+
+
+
+*    SORT LT_GSNGZJL BY BEGDA DESCENDING.
+*    DO 8 TIMES.
+*      READ TABLE LT_GSNGZJL INDEX SY-INDEX.
+*      IF SY-SUBRC = 0.
+*        IF LT_GSNGZJL-ENDDA = '99991231'.
+*          CONCATENATE LT_GSNGZJL-BEGDA+0(4) '.' LT_GSNGZJL-BEGDA+4(2) '.'LT_GSNGZJL-BEGDA+6(2)
+*          '～' '至今' INTO GSNGZJL-20H2L.
+*        ELSE.
+*          CONCATENATE LT_GSNGZJL-BEGDA+0(4) '.' LT_GSNGZJL-BEGDA+4(2) '.'LT_GSNGZJL-BEGDA+6(2)
+*          '～' LT_GSNGZJL-ENDDA+0(4) '.' LT_GSNGZJL-ENDDA+4(2) '.'LT_GSNGZJL-ENDDA+6(2) INTO GSNGZJL-20H2L.
+*        ENDIF.
+*        GSNGZJL-20H4L = LT_GSNGZJL-ZGZDWN.
+*        GSNGZJL-20H8L = LT_GSNGZJL-ZBMN.
+*        GSNGZJL-20H13L = LT_GSNGZJL-ZZWN.
+*        APPEND GSNGZJL.CLEAR GSNGZJL.
+*      ENDIF.
+*    ENDDO.
+  ENDFORM.
