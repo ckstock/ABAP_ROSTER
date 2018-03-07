@@ -1,0 +1,1049 @@
+*&---------------------------------------------------------------------*
+*&  包含                ZR_HR_PA002_1_FROM
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  FRM_SET_SCR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0010   text
+*      -->P_0011   text
+*----------------------------------------------------------------------*
+FORM FRM_SET_SCR  USING    U_OTYPE U_FIELDNAME.
+  DATA: DYNPFIELDS_UP LIKE DYNPREAD OCCURS 0 WITH HEADER LINE.
+  DATA: PROGNAME LIKE SY-REPID.
+  DATA: DYNPNUMB LIKE SY-DYNNR.
+  DATA: STEPLOOP LIKE SY-STEPL.
+  DATA : SELF_REPID LIKE SY-REPID .                         "YNKK100992
+  DATA : SELF_DYNNR LIKE SY-DYNNR .                         "YNKK100992
+  DATA : F4_OBJEC   LIKE OBJEC.                            "XMKBCEK002468
+  SELF_REPID = SY-REPID.                                    "YNKK100992
+  SELF_DYNNR = SY-DYNNR.                                    "YNKK100992
+
+  CALL FUNCTION 'RH_OBJID_REQUEST'                       "XMKBCEK002468
+    EXPORTING
+      PLVAR           = '01'
+      OTYPE           = U_OTYPE
+      DYNPRO_REPID    = SELF_REPID
+      DYNPRO_DYNNR    = SELF_DYNNR
+*     dynpro_plvarfield     = 'PPHDR-PLVAR'
+*     dynpro_searkfield     = 'S_EOBJ-LOW'
+    IMPORTING
+      SEL_OBJECT      = F4_OBJEC
+    EXCEPTIONS
+      CANCELLED       = 1
+      WRONG_CONDITION = 2
+      NOTHING_FOUND   = 3
+      ILLEGAL_MODE    = 4
+      INTERNAL_ERROR  = 5
+      OTHERS          = 6.
+  CHECK F4_OBJEC-OBJID IS NOT INITIAL.
+*  get actual position
+  CALL FUNCTION 'DYNP_GET_STEPL'
+    IMPORTING
+      POVSTEPL = STEPLOOP.
+  REFRESH DYNPFIELDS_UP.
+  DYNPFIELDS_UP-STEPL     = STEPLOOP.
+  DYNPFIELDS_UP-FIELDNAME = U_FIELDNAME.
+  DYNPFIELDS_UP-FIELDVALUE = F4_OBJEC-OBJID.
+  APPEND DYNPFIELDS_UP.
+
+*  update table control
+  CALL FUNCTION 'DYNP_VALUES_UPDATE'
+    EXPORTING
+      DYNAME               = PROGNAME
+      DYNUMB               = DYNPNUMB
+    TABLES
+      DYNPFIELDS           = DYNPFIELDS_UP
+    EXCEPTIONS
+      INVALID_ABAPWORKAREA = 1
+      INVALID_DYNPROFIELD  = 2
+      INVALID_DYNPRONAME   = 3
+      INVALID_DYNPRONUMMER = 4
+      INVALID_REQUEST      = 5
+      NO_FIELDDESCRIPTION  = 6
+      UNDEFIND_ERROR       = 7
+      OTHERS               = 8.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FRM_SET_SCR1
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0021   text
+*      -->P_0022   text
+*----------------------------------------------------------------------*
+FORM FRM_SET_SCR1  USING  U_OTYPE1 U_FIELDNAME1.
+  DATA: DYNPFIELDS_UP LIKE DYNPREAD OCCURS 0 WITH HEADER LINE.
+  DATA: PROGNAME LIKE SY-REPID.
+  DATA: DYNPNUMB LIKE SY-DYNNR.
+  DATA: STEPLOOP LIKE SY-STEPL.
+  DATA : SELF_REPID LIKE SY-REPID .                         "YNKK100992
+  DATA : SELF_DYNNR LIKE SY-DYNNR .                         "YNKK100992
+  DATA : F4_OBJEC   LIKE OBJEC.                            "XMKBCEK002468
+  SELF_REPID = SY-REPID.                                    "YNKK100992
+  SELF_DYNNR = SY-DYNNR.                                    "YNKK100992
+
+  CALL FUNCTION 'RH_OBJID_REQUEST'                       "XMKBCEK002468
+    EXPORTING
+      PLVAR           = '01'
+      OTYPE           = U_OTYPE1
+      DYNPRO_REPID    = SELF_REPID
+      DYNPRO_DYNNR    = SELF_DYNNR
+*     dynpro_plvarfield     = 'PPHDR-PLVAR'
+*     dynpro_searkfield     = 'S_EOBJ-LOW'
+    IMPORTING
+      SEL_OBJECT      = F4_OBJEC
+    EXCEPTIONS
+      CANCELLED       = 1
+      WRONG_CONDITION = 2
+      NOTHING_FOUND   = 3
+      ILLEGAL_MODE    = 4
+      INTERNAL_ERROR  = 5
+      OTHERS          = 6.
+  CHECK F4_OBJEC-OBJID IS NOT INITIAL.
+*  get actual position
+  CALL FUNCTION 'DYNP_GET_STEPL'
+    IMPORTING
+      POVSTEPL = STEPLOOP.
+  REFRESH DYNPFIELDS_UP.
+  DYNPFIELDS_UP-STEPL     = STEPLOOP.
+  DYNPFIELDS_UP-FIELDNAME = U_FIELDNAME1.
+  DYNPFIELDS_UP-FIELDVALUE = F4_OBJEC-OBJID.
+  APPEND DYNPFIELDS_UP.
+
+*  update table control
+  CALL FUNCTION 'DYNP_VALUES_UPDATE'
+    EXPORTING
+      DYNAME               = PROGNAME
+      DYNUMB               = DYNPNUMB
+    TABLES
+      DYNPFIELDS           = DYNPFIELDS_UP
+    EXCEPTIONS
+      INVALID_ABAPWORKAREA = 1
+      INVALID_DYNPROFIELD  = 2
+      INVALID_DYNPRONAME   = 3
+      INVALID_DYNPRONUMMER = 4
+      INVALID_REQUEST      = 5
+      NO_FIELDDESCRIPTION  = 6
+      UNDEFIND_ERROR       = 7
+      OTHERS               = 8.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  HELP_P_SCGS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM HELP_P_SCGS .
+  DATA:IT_RETURN_TAB LIKE  TABLE OF DDSHRETVAL WITH HEADER LINE .
+  CLEAR:HELP_SCGS,HELP_SCGS[].
+  SELECT * INTO CORRESPONDING FIELDS OF TABLE HELP_SCGS FROM ZSCGSPA002.
+  SORT HELP_SCGS BY TEXT1.
+*  DELETE ADJACENT DUPLICATES FROM help_scgs COMPARING zscgs.
+  REFRESH:IT_RETURN_TAB.
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+*     DDIC_STRUCTURE   = ' '
+      RETFIELD         = 'TEXT1'
+*     PVALKEY          = ' '
+      DYNPPROG         = SY-REPID
+      DYNPNR           = SY-DYNNR
+      DYNPROFIELD      = 'TEXT1'
+*     STEPL            = 0
+*     WINDOW_TITLE     =
+*     VALUE            = ' '
+      VALUE_ORG        = 'S'
+*     MULTIPLE_CHOICE  = ' '
+*     DISPLAY          = ' '
+      CALLBACK_PROGRAM = SY-REPID
+      CALLBACK_FORM    = 'CB_FORM'
+*     CALLBACK_METHOD  =
+*     MARK_TAB         =
+* IMPORTING
+*     USER_RESET       =
+    TABLES
+      VALUE_TAB        = HELP_SCGS
+*     FIELD_TAB        = itab_F4
+      RETURN_TAB       = IT_RETURN_TAB
+*     DYNPFLD_MAPPING  =
+* EXCEPTIONS
+*     PARAMETER_ERROR  = 1
+*     NO_VALUES_FOUND  = 2
+*     OTHERS           = 3
+    .
+  IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+  ENDIF.
+*  READ TABLE it_return_tab INDEX 1 .
+*  IF sy-subrc EQ 0 ..
+*    gv_sel_BANK = it_return_tab-fieldval .
+*  ENDIF.
+ENDFORM.
+FORM CB_FORM TABLES RECORD_TAB STRUCTURE SEAHLPRES
+              CHANGING SHLP TYPE SHLP_DESCR_T
+                       CALLCONTROL LIKE DDSHF4CTRL.
+  DATA: INTERFACE LIKE LINE OF SHLP-INTERFACE.
+  READ TABLE SHLP-INTERFACE INTO INTERFACE INDEX 1.
+  INTERFACE-SHLPFIELD+4(1) = '3'.
+  INTERFACE-VALFIELD = 'P_SCWB'.
+  APPEND INTERFACE TO SHLP-INTERFACE.
+ENDFORM.                    "bo_callback_form
+*&---------------------------------------------------------------------*
+*&      Form  FRM_GET_OBJID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FRM_GET_OBJID .
+*-- 组织树的读取
+  CALL FUNCTION 'RH_STRUC_GET'
+    EXPORTING
+      ACT_OTYPE      = 'O'
+      ACT_OBJID      = P_OBJID
+      ACT_WEGID      = 'O-O_DOWN'
+      ACT_BEGDA      = '19000101'
+      ACT_ENDDA      = P_DATA
+    TABLES
+*     result_tab     = it_result_tab
+      RESULT_OBJEC   = IT_OBJEC
+*     result_struc   = it_result_struc
+    EXCEPTIONS
+      NO_PLVAR_FOUND = 1
+      NO_ENTRY_FOUND = 2
+      OTHERS         = 3.
+
+  LOOP AT IT_OBJEC.
+    IT_RANG-SIGN = 'I'.
+    IT_RANG-OPTION = 'EQ'.
+    IT_RANG-LOW = IT_OBJEC-OBJID.
+    APPEND IT_RANG.
+  ENDLOOP.
+
+  IF XNZZ <> 'X'.
+    SELECT OBJID INTO CORRESPONDING FIELDS OF TABLE LT_9103
+    FROM HRP9103 WHERE PLVAR = '01' AND OTYPE = 'O' AND ZXNZZ = 'X'.
+    SORT LT_9103 BY OBJID.
+    LOOP AT IT_RANG.
+      READ TABLE LT_9103 WITH KEY OBJID = IT_RANG-LOW BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        DELETE IT_RANG.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FRM_GET_OBJID1
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FRM_GET_OBJID1 .
+*-- 组织树的读取
+  CALL FUNCTION 'RH_STRUC_GET'
+    EXPORTING
+      ACT_OTYPE      = '01'
+      ACT_OBJID      = P_GLLB
+      ACT_WEGID      = 'Z01C'
+      ACT_PLVAR      = '01'
+*     act_begda      = g_begda
+*     act_endda      = g_endda
+    TABLES
+*     result_tab     = it_result_tab
+      RESULT_OBJEC   = IT_OBJEC1
+*     result_struc   = it_result_struc
+    EXCEPTIONS
+      NO_PLVAR_FOUND = 1
+      NO_ENTRY_FOUND = 2
+      OTHERS         = 3.
+
+  LOOP AT IT_OBJEC1.
+    IT_RANG1-SIGN = 'I'.
+    IT_RANG1-OPTION = 'EQ'.
+    IT_RANG1-LOW = IT_OBJEC1-OBJID.
+    APPEND IT_RANG1.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GT_TITLE_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GT_TITLE_DATA .
+  CONDENSE P_SCGS.
+  SELECT ZNUM ZHMC ZFLAG INTO CORRESPONDING FIELDS OF TABLE GT_TITLE_DATA
+    FROM ZHZPA002 WHERE ZSCGS = P_SCGS.
+*  SELECT znum zhmc INTO CORRESPONDING FIELDS OF TABLE gt_text
+*    FROM zhzpa002 WHERE zscgs = p_scgs.
+
+*******************相关信息一次性读取**********************
+  SELECT PERSA NAME1 MOLGA INTO CORRESPONDING FIELDS OF TABLE LT_T500P
+    FROM T500P WHERE MOLGA = '28'.  "人事范围
+  SORT LT_T500P BY PERSA.
+
+  SELECT BTEXT BTRTL MOLGA INTO CORRESPONDING FIELDS OF TABLE LT_T001P
+    FROM T001P WHERE MOLGA = '28'.  "人事子范围
+  SORT LT_T001P BY  BTRTL.
+
+  SELECT PTEXT PERSG SPRSL INTO CORRESPONDING FIELDS OF TABLE LT_T501T
+    FROM T501T WHERE SPRSL = '1'.   "员工组
+  SORT LT_T501T BY PERSG.
+
+  SELECT PTEXT PERSK SPRSL INTO CORRESPONDING FIELDS OF TABLE LT_T503T
+    FROM T503T WHERE SPRSL = '1'.   "员工子组
+  SORT LT_T503T BY PERSK  .
+
+  SELECT STLTX STELL SPRSL INTO CORRESPONDING FIELDS OF TABLE LT_T513S
+    FROM T513S WHERE SPRSL = '1'.   "职务
+  SORT LT_T513S BY STELL.
+
+  SELECT ATEXT ABKRS SPRSL INTO CORRESPONDING FIELDS OF TABLE LT_T549T
+    FROM T549T WHERE SPRSL = '1'.   "工资核算范围
+  SORT LT_T549T BY ABKRS.
+*******************相关信息一次性读取**********************
+  "合同类型的文本
+  SELECT CTTYP CTTXT INTO CORRESPONDING FIELDS OF TABLE LT_T547S
+    FROM T547S WHERE SPRSL = '1'.
+  SORT LT_T547S BY CTTYP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GT_MAIN_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM GT_MAIN_DATA .
+  CLEAR:DANWEIMC,ZINDEX,ZINDEX1,BQAGE,YEAR,MONTH,L_YEAR,L_MONTH,RZRQ,SOBID,SCLAS,NIANL,GANGW.
+**--组织单位的查看
+  RP_PROVIDE_FROM_LAST P0001 SPACE P_DATA P_DATA.
+  CHECK P0001-ORGEH IN IT_RANG.
+***--管理类别的查看
+*  IF P_GLLB IS NOT INITIAL.
+*    CHECK P0001-STELL IN IT_RANG1.
+*  ENDIF.
+**--排除外聘顾问
+  CHECK P0001-PERSG NE 'M'. CHECK P0001-PERSK NE '24'.
+**--雇佣状态
+  DATA:STAT2 LIKE P0000-STAT2.
+  CLEAR STAT2.
+  LOOP AT P0000 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    STAT2 = P0000-STAT2.
+  ENDLOOP.
+*  CHECK p0000-stat2 = '3'.
+  CHECK STAT2 = '3'.
+
+  CLEAR :ZHIWU_OBJEC,ZHIWU_OBJEC[].
+  CALL FUNCTION 'RH_STRUC_GET'
+    EXPORTING
+      ACT_OTYPE      = 'P'
+      ACT_OBJID      = PERNR-PERNR
+      ACT_WEGID      = 'ZPSC01'
+*     ACT_INT_FLAG   =
+      ACT_PLVAR      = '01'
+      ACT_BEGDA      = P_DATA
+      ACT_ENDDA      = P_DATA
+*     ACT_TDEPTH     = 0
+*     ACT_TFLAG      = 'X'
+*     ACT_VFLAG      = 'X'
+*     AUTHORITY_CHECK        = 'X'
+*     TEXT_BUFFER_FILL       =
+*     BUFFER_MODE    =
+*     IMPORTING
+*     ACT_PLVAR      =
+    TABLES
+*     RESULT_TAB     =
+      RESULT_OBJEC   = ZHIWU_OBJEC
+*     RESULT_STRUC   =
+    EXCEPTIONS
+      NO_PLVAR_FOUND = 1
+      NO_ENTRY_FOUND = 2
+      OTHERS         = 3.
+  IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+**--管理类别的查看
+  CLEAR:GLLB_OBJID.
+  IF P_GLLB IS NOT INITIAL.
+    LOOP AT ZHIWU_OBJEC WHERE OTYPE = 'C'.
+      READ TABLE IT_RANG1 WITH KEY LOW = ZHIWU_OBJEC-OBJID.
+      IF SY-SUBRC = 0.
+        GLLB_OBJID = IT_RANG1-LOW.
+      ENDIF.
+    ENDLOOP.
+
+    CHECK GLLB_OBJID IS NOT INITIAL.
+  ENDIF.
+
+**--检查此人在选择屏幕上的期间内
+*  LOOP AT p0000 WHERE begda <= p_data AND massn = '01'.
+*  ENDLOOP.
+*  CHECK sy-subrc = 0.
+**--姓名
+  GT_MIAN_DATA-NACHN = P0002-NACHN.
+**--员工编号
+  GT_MIAN_DATA-PERNR = PERNR-PERNR.
+**--公司、单位名称、一级部门、二级部门、三级部门、岗位
+  CALL FUNCTION 'ZHR_GET_ORGEH'
+    EXPORTING
+      IN_OBJID     = PERNR-PERNR
+      IN_FLAG1     = 'X'
+      IN_OBJID_XXX = '10000000'
+      IN_DATE_FROM = P_DATA
+      IN_DATE_TO   = P_DATA
+    IMPORTING
+*     OUT_STEXT0   =
+      OUT_STEXT1   = DANWEIMC
+      OUT_STEXT2   = GT_MIAN_DATA-ORG1
+      OUT_STEXT3   = GT_MIAN_DATA-ORG2
+      OUT_STEXT4   = GT_MIAN_DATA-ORG3
+      OUT_STEXT5   = GT_MIAN_DATA-ORG4
+*     OUT_STEXT_1  =
+*     OUT_STEXT_2  =
+*     OUT_STEXT_3  =
+*     OUT_STEXT_4  =
+*     OUT_STEXT_5  =
+      OUT_GANGWEI  = GANGW.
+  GT_MIAN_DATA-ORG = DANWEIMC.
+  APPEND GT_MIAN_DATA . CLEAR GT_MIAN_DATA.
+**************************************中间转换表数据查询****************************************
+**--人员编号
+  GT_TEXT-PERNR = PERNR-PERNR.
+**--人事范围  人事子范围 员工组 员工子组 职务 职务大类  职务小类 工资核算范围
+  LOOP AT P0001 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    READ TABLE LT_T500P WITH KEY PERSA = P0001-WERKS BINARY SEARCH."人事范围
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM1 = LT_T500P-NAME1.
+    ENDIF.
+    READ TABLE LT_T001P WITH KEY BTRTL = P0001-BTRTL BINARY SEARCH."人事子范围
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM2 = LT_T001P-BTEXT.
+    ENDIF.
+    READ TABLE LT_T501T WITH KEY PERSG = P0001-PERSG BINARY SEARCH. "员工组
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM3 = LT_T501T-PTEXT.
+    ENDIF.
+    READ TABLE LT_T503T WITH KEY PERSK = P0001-PERSK BINARY SEARCH. "员工子组
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM4 = LT_T503T-PTEXT.
+    ENDIF.
+    READ TABLE LT_T513S WITH KEY STELL = P0001-STELL BINARY SEARCH. "职务
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM6 = LT_T513S-STLTX.
+    ENDIF.
+    READ TABLE LT_T549T WITH KEY ABKRS = P0001-ABKRS BINARY SEARCH.  "工资核算范围
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM9 = LT_T549T-ATEXT.
+    ENDIF.
+  ENDLOOP.
+******************************职务大类、职务小类
+*  CLEAR :ZHIWU_OBJEC,ZHIWU_OBJEC[].
+*  CALL FUNCTION 'RH_STRUC_GET'
+*    EXPORTING
+*      ACT_OTYPE      = 'P'
+*      ACT_OBJID      = PERNR-PERNR
+*      ACT_WEGID      = 'ZPSC01'
+**     ACT_INT_FLAG   =
+*      ACT_PLVAR      = '01'
+*      ACT_BEGDA      = P_DATA
+*      ACT_ENDDA      = P_DATA
+**     ACT_TDEPTH     = 0
+**     ACT_TFLAG      = 'X'
+**     ACT_VFLAG      = 'X'
+**     AUTHORITY_CHECK        = 'X'
+**     TEXT_BUFFER_FILL       =
+**     BUFFER_MODE    =
+**     IMPORTING
+**     ACT_PLVAR      =
+*    TABLES
+**     RESULT_TAB     =
+*      RESULT_OBJEC   = ZHIWU_OBJEC
+**     RESULT_STRUC   =
+*    EXCEPTIONS
+*      NO_PLVAR_FOUND = 1
+*      NO_ENTRY_FOUND = 2
+*      OTHERS         = 3.
+*  IF SY-SUBRC <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+*
+***--管理类别的查看
+*  clear:GLLB_OBJID.
+*  IF P_GLLB IS NOT INITIAL.
+*    LOOP AT ZHIWU_OBJEC WHERE OTYPE = 'C'.
+*      read TABLE IT_RANG1 WITH KEY LOW = ZHIWU_OBJEC-OBJID.
+*      IF sy-subrc = 0.
+*        GLLB_OBJID = IT_RANG1-LOW.
+*      ENDIF.
+*    ENDLOOP.
+*
+*    check GLLB_OBJID IS NOT INITIAL.
+*  ENDIF.
+
+  DELETE ZHIWU_OBJEC WHERE OTYPE NE '01'.
+  READ TABLE ZHIWU_OBJEC INDEX 2.
+  IF SY-SUBRC = 0.
+    GT_TEXT-ZNUM7 = ZHIWU_OBJEC-STEXT.
+  ENDIF.
+  READ TABLE ZHIWU_OBJEC INDEX 4.
+  IF SY-SUBRC = 0.
+    GT_TEXT-ZNUM8 = ZHIWU_OBJEC-STEXT.
+  ENDIF.
+**--岗位/职位
+  GT_TEXT-ZNUM5 = GANGW.
+**--薪级薪档
+*  IF P0008-TRFST IS NOT INITIAL .
+*    CONCATENATE P0008-TRFGR '-' P0008-TRFST INTO  GT_TEXT-ZNUM10 .
+*  ELSE.
+*    GT_TEXT-ZNUM10 = P0008-TRFGR.
+*  ENDIF.
+  DATA:WA_P0008 TYPE P0008.
+  SELECT SINGLE * INTO CORRESPONDING FIELDS OF WA_P0008 FROM PA0008
+    WHERE PERNR = PERNR-PERNR AND BEGDA <= P_DATA AND ENDDA >= P_DATA .
+  IF WA_P0008-TRFST IS NOT INITIAL .
+    CONCATENATE WA_P0008-TRFGR '-' WA_P0008-TRFST INTO  GT_TEXT-ZNUM10 .
+  ELSE.
+    GT_TEXT-ZNUM10 = WA_P0008-TRFGR.
+  ENDIF.
+
+**--性别
+  IF P0002-GESCH =  '1'.
+    GT_TEXT-ZNUM11 = '男'.
+  ELSEIF P0002-GESCH =  '2'.
+    GT_TEXT-ZNUM11 = '女'.
+  ENDIF.
+**--民族
+  GT_TEXT-ZNUM12 = P0002-ZMZWB.
+**--出生日期
+  GT_TEXT-ZNUM13 = P0002-GBDAT.
+**--年龄
+*  CALL FUNCTION 'HR_AUPBS_AGE'
+*    EXPORTING
+*      pernr            = pernr-pernr
+*      bsdte            = p_data
+*      reaction         = ' '
+*    IMPORTING
+*      value            = nianl      "当年的年龄
+*    EXCEPTIONS
+*      record_not_found = 1
+*      OTHERS           = 2.
+*  gt_text-znum14 = nianl. CONDENSE gt_text-znum14.
+*  IF gt_text-znum14 IS NOT INITIAL.
+*    gt_text-znum14 = gt_text-znum14+0(2).
+*  ENDIF.
+  GT_TEXT-ZNUM14 = P_DATA+0(4) - P0002-GBDAT+0(4) .
+  IF P_DATA+4(4) LE P0002-GBDAT+4(4).
+    GT_TEXT-ZNUM14 = GT_TEXT-ZNUM14 - 1.
+  ENDIF.
+  CONDENSE GT_TEXT-ZNUM14.
+**--籍贯
+  CONCATENATE P0002-ZSFWB P0002-ZDJSWB INTO GT_TEXT-ZNUM15.
+**--政治面貌
+  LOOP AT P0534 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+*    IF SY-TABIX = 1.
+    READ TABLE LT_T7CN5R WITH KEY PCODE = P0534-PCODE BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM16 = LT_T7CN5R-PTEXT.
+    ENDIF.
+*    ELSE.
+*      READ TABLE LT_T7CN5R WITH KEY PCODE = P0534-PCODE BINARY SEARCH.
+*      IF SY-SUBRC = 0.
+*        CONCATENATE GT_TEXT-ZNUM16 '/' LT_T7CN5R-PTEXT INTO GT_TEXT-ZNUM16.
+*      ENDIF.
+*    ENDIF.
+  ENDLOOP.
+**--入党时间
+  READ TABLE P0534 WITH KEY PCODE = '01'.
+  IF SY-SUBRC = 0.
+    GT_TEXT-ZNUM17 = P0534-BEGDA.
+  ENDIF.
+**--户口类型
+  LOOP AT P9000 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA .
+    GT_TEXT-ZNUM18 = P9000-ZHKLXWB.
+  ENDLOOP.
+**--户口省  市
+  GT_TEXT-ZNUM19 = P9000-ZSFWB. GT_TEXT-ZNUM20 = P9000-ZDJSWB.
+**--户籍地址
+  LOOP AT P9000 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    GT_TEXT-ZNUM21 = P9000-ZHKXXDZ.
+  ENDLOOP.
+**--紧急联系人    紧急联系电话
+  LOOP AT P9001 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    GT_TEXT-ZNUM22 = P9001-ZXM.  GT_TEXT-ZNUM23 = P9001-ZDH.
+  ENDLOOP.
+**--学历 学位 毕业学校 毕业时间  专业
+  SORT P9002 BY ZXW.
+*  READ TABLE P9002 INDEX 1. GT_TEXT-ZNUM25 = P9002-ZXWWB.
+  LOOP AT P9002 WHERE ZXW IS NOT INITIAL .
+    GT_TEXT-ZNUM25 = P9002-ZXWWB.
+    EXIT.
+  ENDLOOP.
+  SORT P9002 BY ZXL.
+*  READ TABLE P9002 INDEX 1. GT_TEXT-ZNUM24 = P9002-ZXLWB.
+  LOOP AT P9002 WHERE ZXL IS NOT INITIAL .
+    GT_TEXT-ZNUM24 = P9002-ZXLWB.
+    EXIT.
+  ENDLOOP.
+  IF P9002-ZBYYX <> '999999'.
+    GT_TEXT-ZNUM26 = P9002-ZBYYXWB.
+  ELSEIF P9002-ZBYYX = '999999'.
+    GT_TEXT-ZNUM26 = P9002-ZQTYX.
+  ENDIF.
+  IF P9002-ZBYRQ IS NOT INITIAL.
+    GT_TEXT-ZNUM27 = P9002-ZBYRQ.
+  ENDIF.
+  IF P9002-ZZXZY = '00099999'."IS INITIAL.
+*    GT_TEXT-ZNUM28 = P9002-ZZXZYWB.
+    GT_TEXT-ZNUM28 = P9002-ZZXQTZY.
+  ELSE.
+    GT_TEXT-ZNUM28 = P9002-ZZXZYWB.
+    CONDENSE GT_TEXT-ZNUM28.
+    IF GT_TEXT-ZNUM28 IS INITIAL.
+      GT_TEXT-ZNUM28 = P9002-ZFXZYWB.
+    ENDIF.
+*    IF P9002-ZZXZYWB = ''."IS INITIAL .
+*      GT_TEXT-ZNUM28 = P9002-ZFXZYWB.
+*    ELSE.
+**      CONCATENATE P9002-ZZXZYWB P9002-ZFXZYWB INTO GT_TEXT-ZNUM28.
+*      GT_TEXT-ZNUM28 = P9002-ZZXZYWB.
+*    ENDIF.
+  ENDIF.
+**--技术职称
+  LOOP AT P9006 WHERE BEGDA <= P_DATA.
+    IF SY-TABIX = 1.
+      GT_TEXT-ZNUM29 = P9006-ZRZZGMCWB.
+    ELSE.
+      CONCATENATE GT_TEXT-ZNUM29  '/' P9006-ZRZZGMCWB INTO GT_TEXT-ZNUM29.
+    ENDIF.
+  ENDLOOP.
+**--职业技能等级 职业技能工种
+  LOOP AT P9007 WHERE BEGDA <= P_DATA.
+    IF SY-TABIX = 1.
+      GT_TEXT-ZNUM30 = P9007-ZZYJNDJWB.  GT_TEXT-ZNUM31 = P9007-ZKPGZ.
+    ELSE.
+      CONCATENATE GT_TEXT-ZNUM30  '/'  P9007-ZZYJNDJWB INTO GT_TEXT-ZNUM30.
+      CONCATENATE GT_TEXT-ZNUM31  '/'  P9007-ZKPGZ INTO GT_TEXT-ZNUM31.
+    ENDIF.
+  ENDLOOP.
+  SORT P9007 BY ZZYJNDJ. READ TABLE P9007 INDEX 1.
+
+**--英语证书名称 英语证书成绩	英语听说能力
+  LOOP AT P9011 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA .
+    GT_TEXT-ZNUM32 = P9011-ZYYZSMC.
+    GT_TEXT-ZNUM33 = P9011-ZYYFS.
+    GT_TEXT-ZNUM34 = P9011-ZYYTSNLWB.
+  ENDLOOP.
+**--参加工作时间
+  ASSIGN P0041 TO <AF> CASTING.
+  CLEAR:ZINDEX,ZINDEX1.ZINDEX = 24.
+  DO 12 TIMES.
+    ZINDEX1 = ZINDEX + 1.
+    ASSIGN COMPONENT ZINDEX OF STRUCTURE <AF> TO <BF>.
+    ASSIGN COMPONENT ZINDEX1 OF STRUCTURE <AF> TO <DATA>.
+    IF <BF> = 'Z3'.
+      GT_TEXT-ZNUM35 = <DATA>.
+      CLEAR: <BF>,<DATA>. EXIT .
+    ENDIF.
+    ZINDEX = ZINDEX + 2.
+  ENDDO.
+**--入职日期
+  LOOP AT P0000 WHERE BEGDA <= P_DATA AND ( MASSN = '01' OR MASSN = '11'
+    OR MASSN = '12' OR MASSN = '14' OR MASSN = '18' OR MASSN = '19').
+    GT_TEXT-ZNUM36 = P0000-BEGDA. RZRQ = P0000-BEGDA.
+  ENDLOOP.
+**--本企工龄
+  ZINDEX = 24.
+*  DO 12 TIMES.
+*    ZINDEX1 = ZINDEX + 1.
+*    ASSIGN COMPONENT ZINDEX OF STRUCTURE <AF> TO <BF>.
+*    ASSIGN COMPONENT ZINDEX1 OF STRUCTURE <AF> TO <DATA>.
+*    IF <BF> = 'Z2'.
+*      BQAGE = <DATA>.
+*      CLEAR: <BF>,<DATA>. EXIT.
+*    ENDIF.
+*    ZINDEX = ZINDEX + 2.
+*  ENDDO.
+*  IF BQAGE IS NOT INITIAL.
+*    CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+*      EXPORTING
+*        I_DATE_FROM    = BQAGE
+**       I_KEY_DAY_FROM =
+*        I_DATE_TO      = P_DATA
+**       I_KEY_DAY_TO   =
+*        I_FLG_SEPARATE = 'X'
+*      IMPORTING
+**       e_days         =
+*        E_MONTHS       = MONTH
+*        E_YEARS        = YEAR.
+*    L_YEAR = YEAR. L_MONTH = MONTH. CONDENSE:L_YEAR,L_MONTH.
+*    CONCATENATE L_YEAR '年' L_MONTH '月' INTO GT_TEXT-ZNUM37.
+*  ELSE.
+  CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+    EXPORTING
+      I_DATE_FROM    = RZRQ
+*     I_KEY_DAY_FROM =
+      I_DATE_TO      = P_DATA
+*     I_KEY_DAY_TO   =
+      I_FLG_SEPARATE = 'X'
+    IMPORTING
+*     e_days         =
+      E_MONTHS       = MONTH
+      E_YEARS        = YEAR.
+  L_YEAR = YEAR. L_MONTH = MONTH. CONDENSE:L_YEAR,L_MONTH.
+  CONCATENATE L_YEAR '年' L_MONTH '月' INTO GT_TEXT-ZNUM37.
+*  ENDIF.
+**--身份证号 因公护照
+  READ TABLE P0185 WITH KEY ICTYP = '01'.
+  IF SY-SUBRC = 0.
+    GT_TEXT-ZNUM38 = P0185-ICNUM.
+  ENDIF.
+  READ TABLE P0185 WITH KEY ICTYP = '02'.
+  IF SY-SUBRC = 0.
+    GT_TEXT-ZNUM39 = P0185-ICNUM.
+  ENDIF.
+**--婚姻状况 子女数目
+  LOOP AT P0002 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+*    SELECT SINGLE ftext INTO gt_text-znum40 FROM t502t
+*    WHERE famst = p0002-famst.
+    IF P0002-FAMST = 0.
+      GT_TEXT-ZNUM40 = '未婚'.
+    ELSEIF P0002-FAMST = 1.
+      GT_TEXT-ZNUM40 = '已婚'.
+    ELSEIF P0002-FAMST = 2.
+      GT_TEXT-ZNUM40 = '离异'.
+    ELSEIF P0002-FAMST = 3.
+      GT_TEXT-ZNUM40 = '再婚'.
+    ELSEIF P0002-FAMST = 4.
+      GT_TEXT-ZNUM40 = '丧偶'.
+    ENDIF.
+    GT_TEXT-ZNUM41 = P0002-ANZKD.
+    CONDENSE GT_TEXT-ZNUM41.
+  ENDLOOP.
+**--是否持有独生子女证
+  IF P9031-ZCYDSZNZ IS NOT INITIAL.
+    GT_TEXT-ZNUM42 = '是'.
+  ELSE.
+    GT_TEXT-ZNUM42 = '否'.
+  ENDIF.
+**--现住地址 家庭地址
+  LOOP AT P0006 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    IF P0006-ANSSA = 1.
+      GT_TEXT-ZNUM43 = P0006-LOCAT.
+    ELSEIF P0006-ANSSA = 2.
+      GT_TEXT-ZNUM44 = P0006-LOCAT.
+    ENDIF.
+  ENDLOOP.
+**--联系电话  家庭电话  办公电话  公司邮箱  个人邮箱  QQ  微信
+  LOOP AT P0105 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    IF P0105-USRTY = '0004'.
+      GT_TEXT-ZNUM45 = P0105-USRID.
+    ELSEIF P0105-USRTY = '0002'.
+      GT_TEXT-ZNUM46 = P0105-USRID.
+    ELSEIF P0105-USRTY = '0003'.
+      GT_TEXT-ZNUM47 = P0105-USRID.
+    ELSEIF P0105-USRTY = '0005'.
+      GT_TEXT-ZNUM48 = P0105-USRID_LONG.
+    ELSEIF P0105-USRTY = '0006'.
+      GT_TEXT-ZNUM49 = P0105-USRID_LONG.
+    ELSEIF P0105-USRTY = '0007'.
+      GT_TEXT-ZNUM50 = P0105-USRID.
+    ELSEIF P0105-USRTY = '0008'.
+      GT_TEXT-ZNUM51 = P0105-USRID.
+    ENDIF.
+  ENDLOOP.
+**--合同类型 合同起始时间、合同截止时间
+  LOOP AT P0016 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA .
+*    SELECT SINGLE cttxt INTO gt_text-znum52 FROM t547s
+*      WHERE cttyp = p0016-cttyp AND sprsl = 1.
+    READ TABLE LT_T547S WITH KEY CTTYP = P0016-CTTYP BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      GT_TEXT-ZNUM52 = LT_T547S-CTTXT.
+    ENDIF.
+    GT_TEXT-ZNUM54 = P0016-BEGDA. GT_TEXT-ZNUM55 = P0016-CTEDT.
+    GT_TEXT-ZNUM57 = P0016-ZQDDW.
+    IF P0016-ZQDRQ IS NOT INITIAL .
+      GT_TEXT-ZNUM58 = P0016-ZQDRQ.
+    ENDIF.
+  ENDLOOP.
+**--合同签订次数
+  LOOP AT P0016 WHERE BEGDA <= P_DATA  ."AND zqdlx = 2.
+    GT_TEXT-ZNUM53 = GT_TEXT-ZNUM53 + 1.
+  ENDLOOP.
+**--合同期限
+  CLEAR:YEAR,MONTH,L_YEAR,L_MONTH.
+  CALL FUNCTION 'FIMA_DAYS_AND_MONTHS_AND_YEARS'
+    EXPORTING
+      I_DATE_FROM    = P0016-BEGDA
+*     I_KEY_DAY_FROM =
+      I_DATE_TO      = P0016-CTEDT
+*     I_KEY_DAY_TO   =
+      I_FLG_SEPARATE = 'X'
+    IMPORTING
+*     e_days         =
+      E_MONTHS       = MONTH
+      E_YEARS        = YEAR.
+  L_YEAR = YEAR. L_MONTH = MONTH. CONDENSE:L_YEAR,L_MONTH.
+*  ENDIF.
+  CONCATENATE L_YEAR '年' L_MONTH '月' INTO GT_TEXT-ZNUM56.
+**--档案存放地
+  LOOP AT P9005 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    GT_TEXT-ZNUM59 = P9005-ZDACFDWB.
+    GT_TEXT-ZNUM68 = P9005-ZDABHWB.
+  ENDLOOP.
+**--所属工会  加入工会日期  工会职务
+  LOOP AT P9013 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    GT_TEXT-ZNUM60 = P9013-ZSSFH.
+    GT_TEXT-ZNUM61 = P9013-ZJRRQ.
+    GT_TEXT-ZNUM62 = P9013-ZGHZW.
+  ENDLOOP.
+**--职业危害类别
+  LOOP AT P9018 WHERE BEGDA <= P_DATA.
+    IF SY-TABIX = 1.
+      GT_TEXT-ZNUM63 = P9018-ZZYWHLBWB.
+    ELSE.
+      CONCATENATE GT_TEXT-ZNUM63  '/' P9018-ZZYWHLBWB  INTO GT_TEXT-ZNUM63.
+    ENDIF.
+  ENDLOOP.
+**--身高  体重
+  LOOP AT P9020 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    GT_TEXT-ZNUM64 = P9020-ZSG.
+    GT_TEXT-ZNUM65 = P9020-ZTZ.
+  ENDLOOP.
+**--是否持有健康证
+  LOOP AT P9022 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    IF P9022-ZCYJKZ IS NOT INITIAL.
+      GT_TEXT-ZNUM66 = '是'.
+    ELSE.
+      GT_TEXT-ZNUM66 = '否'.
+    ENDIF.
+  ENDLOOP.
+**--爱好特长
+  LOOP AT P9023 WHERE BEGDA <= P_DATA AND ENDDA >= P_DATA.
+    GT_TEXT-ZNUM67 = P9023-ZAHTC.
+  ENDLOOP.
+
+  APPEND GT_TEXT.CLEAR GT_TEXT.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  HANDLE_USER_COMMAND
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_UCOMM  text
+*----------------------------------------------------------------------*
+FORM HANDLE_USER_COMMAND  USING E_UCOMM TYPE SY-UCOMM.
+  DATA:LS_FIELDCAT TYPE LVC_S_FCAT.
+  DATA:COL1(10),COL(10).
+  CASE E_UCOMM.
+    WHEN 'INSERT'.
+      PERFORM INSERT_DATA.
+
+******"控制多次点击计算的时候始终动态列都是不输出的
+      LOOP AT GT_FIELDCAT1 INTO LS_FIELDCAT WHERE FIELDNAME+0(4) = 'ZNUM'.
+        LS_FIELDCAT-NO_OUT = 'X'.
+        MODIFY GT_FIELDCAT1 FROM LS_FIELDCAT.
+      ENDLOOP.
+
+      CLEAR:COL1,COL.
+      LOOP AT GT_TITLE_DATA WHERE ZFLAG = 'X'.
+        COL1 = SY-TABIX. CONDENSE COL1.
+        CONCATENATE 'ZNUM' COL1 INTO COL.
+        LOOP AT GT_FIELDCAT1 INTO LS_FIELDCAT WHERE FIELDNAME = COL.
+          LS_FIELDCAT-NO_OUT = ''.
+          MODIFY GT_FIELDCAT1 FROM LS_FIELDCAT.
+        ENDLOOP.
+      ENDLOOP.
+
+      CALL METHOD WCL_GRID1->SET_FRONTEND_FIELDCATALOG
+        EXPORTING
+          IT_FIELDCATALOG = GT_FIELDCAT1[].
+
+      CALL METHOD WCL_GRID1->SET_FRONTEND_LAYOUT
+        EXPORTING
+          IS_LAYOUT = GS_LAYOUT.
+
+      CALL METHOD WCL_GRID1->REFRESH_TABLE_DISPLAY.
+    WHEN 'ALL'.
+      LOOP AT GT_TITLE_DATA.
+        GT_TITLE_DATA-ZFLAG = 'X'.
+        MODIFY GT_TITLE_DATA. CLEAR GT_TITLE_DATA.
+      ENDLOOP.
+      CALL METHOD WCL_GRID->REFRESH_TABLE_DISPLAY.
+    WHEN 'NONE'.
+      LOOP AT GT_TITLE_DATA.
+        GT_TITLE_DATA-ZFLAG = ''.
+        MODIFY GT_TITLE_DATA. CLEAR GT_TITLE_DATA.
+      ENDLOOP.
+      CALL METHOD WCL_GRID->REFRESH_TABLE_DISPLAY.
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM INSERT_DATA .
+  DATA:WA_NEW_LINE TYPE REF TO DATA.
+  CREATE DATA WA_NEW_LINE LIKE LINE OF <DYN_TABLE>.  " 建立一个与动态内表结构相同的数据对象，且数据对象为是一个结构
+  ASSIGN WA_NEW_LINE->* TO <DYN_WA>." 用<dyn_wa>指针指向该结构
+  FIELD-SYMBOLS:<FIELD> TYPE  ANY .
+
+
+  SORT GT_TEXT BY PERNR.
+  LOOP AT <DYN_TABLE> ASSIGNING <DYN_WA>. "8
+    ASSIGN COMPONENT 4 OF STRUCTURE <DYN_WA> TO <FIELD>.
+    READ TABLE GT_TEXT WITH KEY PERNR = <FIELD> BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      ASSIGN COMPONENT 10 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM1 TO <FIELD>.
+      ASSIGN COMPONENT 11 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM2 TO <FIELD>.
+      ASSIGN COMPONENT 12 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM3 TO <FIELD>.
+      ASSIGN COMPONENT 13 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM4 TO <FIELD>.
+      ASSIGN COMPONENT 14 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM5 TO <FIELD>.
+      ASSIGN COMPONENT 15 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM6 TO <FIELD>.
+      ASSIGN COMPONENT 16 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM7 TO <FIELD>.
+      ASSIGN COMPONENT 17 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM8 TO <FIELD>.
+      ASSIGN COMPONENT 18 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM9 TO <FIELD>.
+      ASSIGN COMPONENT 19 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM10 TO <FIELD>.
+      ASSIGN COMPONENT 20 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM11 TO <FIELD>.
+      ASSIGN COMPONENT 21 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM12 TO <FIELD>.
+      ASSIGN COMPONENT 22 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM13 TO <FIELD>.
+      ASSIGN COMPONENT 23 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM14 TO <FIELD>.
+      ASSIGN COMPONENT 24 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM15 TO <FIELD>.
+      ASSIGN COMPONENT 25 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM16 TO <FIELD>.
+      ASSIGN COMPONENT 26 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM17 TO <FIELD>.
+      ASSIGN COMPONENT 27 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM18 TO <FIELD>.
+      ASSIGN COMPONENT 28 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM19 TO <FIELD>.
+      ASSIGN COMPONENT 29 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM20 TO <FIELD>.
+      ASSIGN COMPONENT 30 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM21 TO <FIELD>.
+      ASSIGN COMPONENT 31 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM22 TO <FIELD>.
+      ASSIGN COMPONENT 32 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM23 TO <FIELD>.
+      ASSIGN COMPONENT 33 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM24 TO <FIELD>.
+      ASSIGN COMPONENT 34 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM25 TO <FIELD>.
+      ASSIGN COMPONENT 35 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM26 TO <FIELD>.
+      ASSIGN COMPONENT 36 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM27 TO <FIELD>.
+      ASSIGN COMPONENT 37 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM28 TO <FIELD>.
+      ASSIGN COMPONENT 38 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM29 TO <FIELD>.
+      ASSIGN COMPONENT 39 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM30 TO <FIELD>.
+      ASSIGN COMPONENT 40 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM31 TO <FIELD>.
+      ASSIGN COMPONENT 41 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM32 TO <FIELD>.
+      ASSIGN COMPONENT 42 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM33 TO <FIELD>.
+      ASSIGN COMPONENT 43 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM34 TO <FIELD>.
+      ASSIGN COMPONENT 44 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM35 TO <FIELD>.
+      ASSIGN COMPONENT 45 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM36 TO <FIELD>.
+      ASSIGN COMPONENT 46 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM37 TO <FIELD>.
+      ASSIGN COMPONENT 47 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM38 TO <FIELD>.
+      ASSIGN COMPONENT 48 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM39 TO <FIELD>.
+      ASSIGN COMPONENT 49 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM40 TO <FIELD>.
+      ASSIGN COMPONENT 50 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM41 TO <FIELD>.
+      ASSIGN COMPONENT 51 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM42 TO <FIELD>.
+      ASSIGN COMPONENT 52 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM43 TO <FIELD>.
+      ASSIGN COMPONENT 53 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM44 TO <FIELD>.
+      ASSIGN COMPONENT 54 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM45 TO <FIELD>.
+      ASSIGN COMPONENT 55 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM46 TO <FIELD>.
+      ASSIGN COMPONENT 56 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM47 TO <FIELD>.
+      ASSIGN COMPONENT 57 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM48 TO <FIELD>.
+      ASSIGN COMPONENT 58 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM49 TO <FIELD>.
+      ASSIGN COMPONENT 59 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM50 TO <FIELD>.
+      ASSIGN COMPONENT 60 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM51 TO <FIELD>.
+      ASSIGN COMPONENT 61 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM52 TO <FIELD>.
+      ASSIGN COMPONENT 62 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM53 TO <FIELD>.
+      ASSIGN COMPONENT 63 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM54 TO <FIELD>.
+      ASSIGN COMPONENT 64 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM55 TO <FIELD>.
+      ASSIGN COMPONENT 65 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM56 TO <FIELD>.
+      ASSIGN COMPONENT 66 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM57 TO <FIELD>.
+      ASSIGN COMPONENT 67 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM58 TO <FIELD>.
+      ASSIGN COMPONENT 68 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM59 TO <FIELD>.
+      ASSIGN COMPONENT 69 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM60 TO <FIELD>.
+      ASSIGN COMPONENT 70 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM61 TO <FIELD>.
+      ASSIGN COMPONENT 71 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM62 TO <FIELD>.
+      ASSIGN COMPONENT 72 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM63 TO <FIELD>.
+      ASSIGN COMPONENT 73 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM64 TO <FIELD>.
+      ASSIGN COMPONENT 74 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM65 TO <FIELD>.
+      ASSIGN COMPONENT 75 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM66 TO <FIELD>.
+      ASSIGN COMPONENT 76 OF STRUCTURE <DYN_WA> TO <FIELD>.
+      MOVE GT_TEXT-ZNUM67 TO <FIELD>.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
