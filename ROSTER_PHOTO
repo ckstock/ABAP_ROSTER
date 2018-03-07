@@ -1,0 +1,108 @@
+*&---------------------------------------------------------------------*
+*&  包含                ZR_HR_PA002_1_PHOTO
+*&---------------------------------------------------------------------*
+DATA:  P_CONNECT_INFO LIKE TABLE OF TOAV0 WITH HEADER LINE.
+DATA:  P_DOCUMENT_TYPE LIKE TOAV0-RESERVE.
+DATA:  URL(255) TYPE C.
+DATA: "DOCKING_CONT TYPE REF TO CL_GUI_DOCKING_CONTAINER, " Custom Container
+      PICTURE      TYPE REF TO CL_GUI_PICTURE.
+DATA:  HANDLE TYPE I.
+DATA:WCL_CONTAINER_PHOTO TYPE REF TO CL_GUI_CUSTOM_CONTAINER. "
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+MODULE STATUS_0300 OUTPUT.
+  SET PF-STATUS 'TC_0300'.
+  SET TITLEBAR 'TITLE_0300'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0300 INPUT.
+  DATA:CODE_0300 LIKE SY-UCOMM.
+  CODE_0300 = SY-UCOMM.
+  CASE CODE_0300.
+    WHEN 'EXIT'.
+      IF PICTURE IS NOT INITIAL.
+        CALL METHOD PICTURE->CLEAR_PICTURE.
+      ENDIF.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  DISPLAY_PICTURE  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE DISPLAY_PICTURE OUTPUT.
+  DATA: REPID LIKE SY-REPID.
+  DATA:L_RESULT TYPE I.
+  REPID = SY-REPID.
+
+  IF PICTURE IS INITIAL.                                    "TC_0100
+    CREATE OBJECT WCL_CONTAINER_PHOTO
+      EXPORTING
+        CONTAINER_NAME = 'TC_0300'.
+*Object To Create the Custom Container
+    CREATE OBJECT PICTURE
+      EXPORTING
+        PARENT = WCL_CONTAINER_PHOTO.
+    CHECK SY-SUBRC = 0.
+*Method To Set Position of Image
+*    CALL METHOD PICTURE->SET_POSITION
+*      EXPORTING
+*        HEIGHT = 47
+*        LEFT   = 610
+*        TOP    = 25
+*        WIDTH  = 70.
+  ELSE.
+*Function Module To Reset Image
+    CALL FUNCTION 'HR_IMAGE_RESET'
+      EXPORTING
+        HANDLE         = HANDLE
+      EXCEPTIONS
+        INVALID_HANDLE = 1
+        OTHERS         = 2.
+    IF SY-SUBRC <> 0.
+    ENDIF.
+  ENDIF.
+
+  CLEAR:P_CONNECT_INFO,P_CONNECT_INFO[],URL.
+*FUNCTION MODULE TO CHECK EXISTANCE OF IMAGE
+  CALL FUNCTION 'HR_IMAGE_EXISTS'
+    EXPORTING
+      P_PERNR        = <PERNR_PHOTO>
+    IMPORTING
+      P_CONNECT_INFO = P_CONNECT_INFO
+    EXCEPTIONS
+      OTHERS         = 2.
+  P_DOCUMENT_TYPE = P_CONNECT_INFO-RESERVE.
+*Function Module To Get the URL of Image
+  CALL FUNCTION 'SCMS_DOC_URL_READ'
+    EXPORTING
+      STOR_CAT    = SPACE
+      CREP_ID     = P_CONNECT_INFO-ARCHIV_ID
+      DOC_ID      = P_CONNECT_INFO-ARC_DOC_ID
+      COMP_ID     = 'DATA'
+      DP_URL_ONLY = 'X'
+    IMPORTING
+      URL         = URL
+    EXCEPTIONS
+      OTHERS      = 10.
+  IF SY-SUBRC <> 0.
+  ENDIF.
+*Method To Set Display Mode Fit to Container
+  CALL METHOD PICTURE->SET_DISPLAY_MODE
+    EXPORTING
+      DISPLAY_MODE = CL_GUI_PICTURE=>DISPLAY_MODE_FIT.
+*Method To load Image from URL
+  CALL METHOD PICTURE->LOAD_PICTURE_FROM_URL_ASYNC
+    EXPORTING
+      URL = URL.
+
+ENDMODULE.
